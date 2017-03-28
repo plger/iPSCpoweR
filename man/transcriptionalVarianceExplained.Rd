@@ -4,18 +4,22 @@
 \alias{transcriptionalVarianceExplained}
 \title{transcriptionalVarianceExplained}
 \usage{
-transcriptionalVarianceExplained(unit = "tpm", logTransform = T,
-  variables = c("sex", "individual", "clone", "replicate"), doPlot = TRUE,
-  ncores = NULL)
+transcriptionalVarianceExplained(res = NULL, unit = "tpm",
+  logTransform = T, variables = c("sex", "individual"), doPlot = TRUE,
+  mixed = TRUE, formula = NULL, ncores = NULL)
 }
 \arguments{
 \item{unit}{Either "tpm" (default), "fpkm", or "counts".}
 
 \item{logTransform}{Logical; whether to log-transform the data (default T).}
 
-\item{variables}{The explanatory variables to include. Should be any combination of "sex", "individual", "clone", and "replicate".}
+\item{variables}{The explanatory variables to include. Default "sex" and "individual"}
 
 \item{doPlot}{Logical; whether to plot a summary of the results (default TRUE; requires packages `beanplot` and `LSD` to be installed)}
+
+\item{mixed}{Logical; whether to use mixed models (via `lme4`) (default TRUE).}
+
+\item{formula}{Specify the formula to use. If specified, this overrides the `variables` argument. If `mixed=F`, the default formula is `~.`; if `mixed=T`, each variable is considered a random variable.}
 
 \item{ncores}{The number of threads (by defaults uses all but 1 cores)}
 }

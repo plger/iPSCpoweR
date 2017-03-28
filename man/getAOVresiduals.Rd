@@ -4,17 +4,19 @@
 \alias{getAOVresiduals}
 \title{getAOVresiduals}
 \usage{
-getAOVresiduals(x, m)
+getAOVresiduals(x, m, form = NULL)
 }
 \arguments{
 \item{x}{a numeric vector (expression values to be explained)}
 
 \item{m}{a data.frame with rows corresponding to each value of x, and columns indicating the values of explanatory variables.}
+
+\item{form}{Specify the formula to use (default NULL for ~.)}
 }
 \value{
 a numeric vector of squared residuals.
 }
 \description{
-Returns the residuals of x explained by each variable (column of m).
+Returns the residuals of x explained by each variable (column of m) using classical analysis of variance.
 }
 

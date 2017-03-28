@@ -4,16 +4,17 @@
 \alias{DEA.permutateIndividuals}
 \title{DEA.permutateIndividuals}
 \usage{
-DEA.permutateIndividuals(nbIndividuals = 2, maxTests = 300, nbClone = 2,
-  res = NULL, useOnlyMulticlone = TRUE, seed = 1, addDE = F,
+DEA.permutateIndividuals(nbIndividuals = 2, maxTests = 50, nbClone = 2,
+  res = NULL, useOnlyMulticlone = TRUE, seed = 1, addDE = FALSE,
   addDE.foldchanges = c(1.25, 1.5, 2, 3, 5), addDE.nbPerFC = 10,
-  doSave = T, returnResults = F, ncores = NULL, quiet = F,
-  filter = NULL, nested = FALSE, DEAfunc = edgeRwrapper)
+  doSave = TRUE, returnResults = FALSE, ncores = NULL, quiet = FALSE,
+  filter = NULL, nested = FALSE, fasterCombinations = FALSE,
+  DEAfunc = edgeRwrapper)
 }
 \arguments{
 \item{nbIndividuals}{Either a positive integer, or a vector of positive integers of length 2, indicating the number of individuals in each group (default 2).}
 
-\item{maxTests}{The maximum number of tests to run (default 300).}
+\item{maxTests}{The maximum number of tests to run (default 50).}
 
 \item{nbClone}{The number of iPSC clones to consider from each individual (default 2)}
 
@@ -40,6 +41,8 @@ DEA.permutateIndividuals(nbIndividuals = 2, maxTests = 300, nbClone = 2,
 \item{filter}{Function; the filter for genes to be tested, to be applied to all rows of the expression matrix (default: no filter). An example value for the filter argument would be `sum(x>10)>2', which would only include genes that have more than 10 counts in more than 2 samples.}
 
 \item{nested}{Logical; whether to run the analysis using duplicateCorrelation (default FALSE). Requires `nbClone=2` and `DEAfunc=voomWrapper`.}
+
+\item{fasterCombinations}{Logical; whether to find combinations rapidly by selecting a pre-defined sex ratio (default FALSE). Useful for large datasets.}
 
 \item{DEAfunc}{Function; the function used to run the differential expression analysis (by default, the `edgeRwrapper' function of this package).}
 }

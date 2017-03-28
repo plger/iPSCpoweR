@@ -1,6 +1,6 @@
 # The iPSCpoweR package
 
-This package provides resources for exploring the HipSci dataset and run large numbers of differential expression analyses across random groups of individuals, in order to guide experimental design. This vignette will guide you through its main usage.
+This package provides resources for exploring large transcriptomics datasets from human induced pluripotent stem cell (iPSC) lines, run large numbers of differential expression analyses across random groups of individuals, in order to approximate power and guide experimental design. This vignette will guide you through its main usage.
 
 <br/><br/><br/>
       
@@ -31,7 +31,7 @@ vignette("iPSCpoweR")
 
 The main dataset included in this package was released by the Human Induced Pluripotent Stem Cell Initiative (HipSci), quantified with Salmon v6.1, using FMD indexes and the Refseq transcript annotation. You can use the `getSamplesInfo()` function to have an overview of the samples, and `data("hipsci_annotation")` to access the samples' annotation.
 
-The package's functions take care of loading and handling the datasets. If you wish to access the data for other purposes, see the `getTxExpr` and `getGeneExpr` functions. To aggregate technical replicates, see the `aggByClone` function.
+The package's functions take care of loading and handling the data. If you wish to access the data for other purposes, see the `getTxExpr` and `getGeneExpr` functions. To aggregate technical replicates, see the `aggByClone` function.
 
 ### Using the GSE79636 dataset
 
@@ -46,7 +46,7 @@ summary(GSE79636)
 ```
 
 Then you can pass this object to any of the DEA permutation functions through the `res` argument:
-```{r egg, eval=F}
+```
 DEA.permutateIndividuals(nbIndividuals = 3, res=GSE79636)
 ```
 
@@ -100,8 +100,9 @@ For more information, see `?DEA.permutateClones`.
 ## Output files
 
 if `doSave=TRUE` (default), 3 or 4 output files are produced, each with either of the following prefix:
-1. `[x]indiv.vs.[x]indiv.[y]` for results of the `DEA.permutateIndividuals` function, where x is the number of individuals per group and y the number of clones (e.g. 2indiv.vs.2indiv.1).
-2. `clones.[x]indiv.[paired]` for results of the `DEA.permutateClones` function, where x is the number of individuals and [paired] indicates if a paired analysis was performed.
+
+* `[x]indiv.vs.[x]indiv.[y]` for results of the `DEA.permutateIndividuals` function, where x is the number of individuals per group and y the number of clones (e.g. 2indiv.vs.2indiv.1).
+* `clones.[x]indiv.[paired]` for results of the `DEA.permutateClones` function, where x is the number of individuals and [paired] indicates if a paired analysis was performed.
 
 The output files are:
 
@@ -165,7 +166,7 @@ hist(pm[[1]]$FP, xlab="False positives", ylab="Number of permutations",breaks=20
 
 <div id="plotting-a-roc-curve" class="section level3">
 <h3>Plotting a ROC curve</h3>
-<p>The packages includes a function to plot a Receiver-Operator Characteristic (ROC) curve representing the results of a permutation DEA analysis (assuming that <code>addDE</code> was enabled). The function must <i>not</i> be called on the results of the <code>readPermResults</code> function, which do not include individual p-values, but directly on the results of the permuation analysis, e.g.:</p>
+<p>The packages includes a function to plot a Receiver Operating Characteristic (ROC) curve representing the results of a permutation DEA analysis (assuming that <code>addDE</code> was enabled). The function must <i>not</i> be called on the results of the <code>readPermResults</code> function, which do not include individual p-values, but directly on the results of the permuation analysis, e.g.:</p>
 <pre class="r"><code>getPermROC(&quot;3indiv.vs.3indiv.2.RData&quot;)</code></pre>
 <p><img src="vignettes/ROC.png"/></p>
 <p>By default, the function will plot the median sensitivity and specificity at sliding p-values (the line and points), as well as the 0.05 and 0.95 quantiles across the different permutations (the shaded area). You can disable the shaded area with <code>qprobs=NA</code>. See <code>?getPermROC</code> for more options.</p>
@@ -183,9 +184,9 @@ In both functions, you can use the `filter` argument to set a pre-testing filter
 
 ### Using a custom DEA function
 
-The permutation analysis calls the `edgeRwrapper` function to perform the DEA. This function can be replaced by a custom function, or by the already implemented `voomWrapper` function, using the `DEAfunc` argument of either `DEA.permutateIndividuals` or `DEA.permutateClones`. For custom functions, the output should be a data.frame with genes as row.names (in the same order in which they were initially given), and the following columns: `logFC`, `PValue`, `FDR`. The best way to get started writing your own function is too look at `edgeRwrapper` or `voomWrapper`.
+The permutation analysis calls the `edgeRwrapper` function to perform the DEA. This function can be replaced by a custom function, or by some of the other functions already implemented (see below), using the `DEAfunc` argument of either `DEA.permutateIndividuals` or `DEA.permutateClones`. For custom functions, the output should be a data.frame with genes as row.names (in the same order in which they were initially given), and the following columns: `logFC`, `PValue`, `FDR`. The best way to get started writing your own function is too look at `edgeRwrapper` or `voomWrapper`.
 
-### Using nested analysis for multiple clones
+#### Using the duplicateCorrelation approach for multiple clones
 
 To enable the use of `limma::duplicateCorrelation` (and treat individuals as random effects) in `DEA.permutateIndividuals`, make sure you set `DEAfunc=voomWrapper` and `nested=TRUE`. This feature is not available for edgeR and requires more than one clone per individual.
 
@@ -197,6 +198,35 @@ DEA.permutateIndividuals(nbIndividuals = 3, nbClone = 2, addDE = T,
     }, nested = T, DEAfunc = voomWrapper)
 ```
 
+Of note, this approach was the best performing in our study.
+
+#### Summing clones' read counts before DEA
+
+You can use the function `voomWrapperSumReps`, which does the same thing as the normal `voomWrapper` function, except that it sums the read counts of clones of the same individual before running the analysis.
+
+#### Using mixed models
+
+Three functions are available to use `lme4`-based mixed models, considering the individual as a random effect:
+
+* `vstLmerWrapper` runs `DESeq2`'s variance-stabilizing transformation (VST), fits the mixed model ~1+(1|individual)+group (assuming that it is called with `nested=TRUE`), and uses the `drop1` test to assess statistical significance.
+* `voomLmerWrapper` performs similarly, except that it passes the counts through voom instead of DESeq2's VST,
+* `glmmWrapper` fits the mixed moded ~1+(1|individual)+group using `MASS::glmmPLQ` with a quasipoisson dispersion model.
+
+All these methods should be used with the `nested` argument, e.g.:
+```
+DEA.permutateIndividuals( nbIndividuals = 3, 
+	nbClone = 2,
+	addDE = T, 
+	filter = function(x) { sum(x > 10) > 2 }, 
+	nested = T, 
+	DEAfunc = vstLmerWrapper )
+```
+
+If `nested=F`, the corresponding model without random effect will be used.
+
+Of note, all three methods are very slow, and according to our study less accurate than the approach based on `limma::duplicateCorrelation` (as discussed above).
+
+
 
 
 <br/><br/><br/>
@@ -205,16 +235,10 @@ DEA.permutateIndividuals(nbIndividuals = 3, nbClone = 2, addDE = T,
 
 # Reproducing the analysis of variance
 
-The analysis of the proportion of transcriptional variance explained by difference between individuals, between clones and between technical replicates can be reproduced using the `transcriptionalVarianceExplained` function (see `?transcriptionalVarianceExplained`):
 
-```
-res <- transcriptionalVarianceExplained()
-```
-
-<p style="text-align: center;"><img src="varExplained.png" alt="variance explained"/></p>
+The analysis of the proportion of transcriptional variance explained by difference between individuals can be reproduced using the `transcriptionalVarianceExplained` function. By default, mixed models are used, treating the individual as a random effect variable. For more detail, see `?transcriptionalVarianceExplained`.
 
 To reproduce the analysis of variance in cellular morphology, see `?cellphenoVarianceExplained`.
-
 
 
 <br/><br/><br/>

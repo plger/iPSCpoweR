@@ -4,7 +4,7 @@
 \alias{DEA.permutateClones}
 \title{DEA.permutateClones}
 \usage{
-DEA.permutateClones(nbIndividuals = 2, maxTests = 300, res = NULL,
+DEA.permutateClones(nbIndividuals = 2, maxTests = 50, res = NULL,
   seed = 1, addDE = F, addDE.foldchanges = c(1.25, 1.5, 2, 3, 5),
   addDE.nbPerFC = 10, paired = F, doSave = T, returnResults = F,
   ncores = NULL, quiet = F, filter = NULL, useExactTest = T,
@@ -13,7 +13,7 @@ DEA.permutateClones(nbIndividuals = 2, maxTests = 300, res = NULL,
 \arguments{
 \item{nbIndividuals}{A positive integer indicating the number of individuals to consider (default 2).}
 
-\item{maxTests}{The maximum number of tests to run (default 300).}
+\item{maxTests}{The maximum number of tests to run (default 50).}
 
 \item{res}{The result of `aggByClone(getGeneExpr())`, optional and used only to speed up multiple calls or use a custom dataset.}
 

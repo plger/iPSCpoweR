@@ -5,19 +5,23 @@
 \title{getPermROC}
 \usage{
 getPermROC(permResults, minPts = 100, qprobs = c(0.05, 0.95), main = NULL,
-  col = "blue", add = F, showAUC = !add, returnCoords = FALSE,
-  pch = 1, ncores = 1)
+  col = "blue", type = "b", lty = 1, add = F, lwd = 2,
+  showAUC = !add, returnCoords = FALSE, pch = 1, ncores = 1)
 }
 \arguments{
 \item{permResults}{Either the results of the `DEA.permutateIndividuals` or `DEA.permutateClones` function, or a character vector of length 1 indicating the files in which such an object was saved.}
 
 \item{minPts}{Integer>0 indicating the minimum approximative number of points over which to plot the curve (default 100). Higher values produce a higher resolution plot, but will take longer to run.}
 
-\item{qprobs}{Numeric vector of length 2 indicating the probabilities for the confidence interval (default `c(0.05,0.95)`).}
+\item{qprobs}{Numeric vector of length 2 indicating the probabilities for the confidence interval (default `c(0.05,0.95)`). Set to NA to disable.}
 
 \item{main}{Plot title (default "ROC Curve")}
 
 \item{col}{Color (default blue)}
+
+\item{type}{Plot type (default 'both')}
+
+\item{lty}{Line type (default 1)}
 
 \item{add}{Logical; whether to add the curve on an existing plot (default FALSE)}
 
