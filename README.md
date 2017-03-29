@@ -65,7 +65,7 @@ A custom dataset could be used in a similar fashion. You must simply pass to the
 
 The package runs differential expression analyses (DEA) on random groups of samples using two functions, related to types of grouping:
 
-<p style="text-align: center;"><img src="vignette/permu_schemes.png" alt="Permutation schemes" width=75%/></p>
+<p style="text-align: center;"><img src="vignettes/permu_schemes.png" alt="Permutation schemes" width=75%/></p>
 
 By default, the permutation functions are multithreaded, using `detetedCores()-1` threads. This can be adjusted through the `ncores` arguments, and multithreading can be disabled using `ncores=1`.
 
