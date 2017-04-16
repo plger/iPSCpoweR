@@ -705,6 +705,7 @@ glmmWrapper <- function(e, nested, DEsamples=NULL, mm=NULL, paired=NULL){
 #' readPermResults
 #'
 #' @param resFiles character vector indicating the names of the results files (.RData files save by the DEA permutation functions)
+#' @param threshold the FDR threshold below which a test is considered positive (default 0.05).
 #'
 #' @return A list with the following slots:
 #' `nbComps: number of comparisons.
@@ -713,11 +714,11 @@ glmmWrapper <- function(e, nested, DEsamples=NULL, mm=NULL, paired=NULL){
 #' `DEGs: (only if the permutations were generated with addDE=TRUE) a data.frame containing, for each gene, the number of times it was found with a FDR below 0.05, the absLog2FC introduced in the input, and the mean fragment count.
 #'
 #' @export
-readPermResults <- function(resFiles){
+readPermResults <- function(resFiles, threshold=0.05){
 	if(class(resFiles)=="character"){
-	  ll <- lapply(resFiles, FUN=function(x){
+	  ll <- lapply(resFiles, threshold=threshold, FUN=function(x,threshold){
 	    o <- load(x)
-	    readPermResults(get(o[[1]]))
+	    readPermResults(get(o[[1]]),threshold)
 	  })
 	  names(ll) <- gsub(".RData","",basename(resFiles),fixed=T)
 	  return(ll)
@@ -726,15 +727,15 @@ readPermResults <- function(resFiles){
           la <- list(nbComps=ncol(permres$PValues))
           if("inputDE.foldchange" %in% colnames(permres$byGene)){
             g <- row.names(permres$byGene)[which(permres$byGene$inputDE.foldchange==1)]
-            la[["FP"]] <- apply(permres$FDR[g,],2,FUN=function(x){ sum(x < 0.05) })
+            la[["FP"]] <- apply(permres$FDR[g,],2,threshold=threshold,FUN=function(x,threshold){ sum(x < threshold) })
             g <- row.names(permres$byGene)[which(permres$byGene$inputDE.foldchange!=1)]
-            la[["TP"]] <- apply(permres$FDR[g,],2,FUN=function(x){ sum(x < 0.05) })
+            la[["TP"]] <- apply(permres$FDR[g,],2,threshold=threshold,FUN=function(x,threshold){ sum(x < threshold) })
             la[["DEGs"]] <- permres$byGene[g,c("FDR.below.05","inputDE.foldchange","meanCount")]
             la[["DEGs"]][,2] <- abs(log2(la[["DEGs"]][,2]))
             la[["DEGs"]][,3] <- log(la[["DEGs"]][,3])
             names(la[["DEGs"]])[2:3] <- c("absLog2FC","logMeanCount")
           }else{
-            la[["FP"]] <- apply(permres$FDR,2,FUN=function(x){ sum(x < 0.05) })
+            la[["FP"]] <- apply(permres$FDR,2,threshold=threshold,FUN=function(x,threshold){ sum(x < threshold) })
           }
           return(la)
 	}
@@ -780,7 +781,7 @@ getSensitivityMatrix <- function(res, bins=5, unlogExpr=T, doPlot=T){
     for(i in 1:nrow(m)){
         for(j in 1:ncol(m)){
             w <- which(cc==colnames(m)[j] & d$FC==rownames(m)[i])
-            m[i,j] <- sum(d$FDR.below.05[w])/(length(w)*res$nbComps)
+            m[i,j] <- sum(d$FDR.below.threshold[w])/(length(w)*res$nbComps)
         }
     }
     if(unlogExpr)	colnames(m) <- sapply(colnames(m),FUN=function(x){ paste(round(exp(as.numeric(strsplit(gsub("]","",gsub("(","",x,fixed=T),fixed=T),",")[[1]]))-1),collapse="-") })

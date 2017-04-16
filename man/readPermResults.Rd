@@ -4,10 +4,12 @@
 \alias{readPermResults}
 \title{readPermResults}
 \usage{
-readPermResults(resFiles)
+readPermResults(resFiles, threshold = 0.05)
 }
 \arguments{
 \item{resFiles}{character vector indicating the names of the results files (.RData files save by the DEA permutation functions)}
+
+\item{threshold}{the FDR threshold below which a test is considered positive (default 0.05).}
 }
 \value{
 A list with the following slots:
