@@ -711,7 +711,7 @@ glmmWrapper <- function(e, nested, DEsamples=NULL, mm=NULL, paired=NULL){
 #' `nbComps: number of comparisons.
 #' `FP: number of false (or spurious) positives for each comparison.
 #' `TP: (only if the permutations were generated with addDE=TRUE) The number of true positives for each comparison.
-#' `DEGs: (only if the permutations were generated with addDE=TRUE) a data.frame containing, for each gene, the number of times it was found with a FDR below 0.05, the absLog2FC introduced in the input, and the mean fragment count.
+#' `DEGs: (only if the permutations were generated with addDE=TRUE) a data.frame containing, for each gene, the number of times it was found with a FDR below the threshold, the absLog2FC introduced in the input, and the mean fragment count.
 #'
 #' @export
 readPermResults <- function(resFiles, threshold=0.05){
@@ -731,9 +731,12 @@ readPermResults <- function(resFiles, threshold=0.05){
             g <- row.names(permres$byGene)[which(permres$byGene$inputDE.foldchange!=1)]
             la[["TP"]] <- apply(permres$FDR[g,],2,threshold=threshold,FUN=function(x,threshold){ sum(x < threshold) })
             la[["DEGs"]] <- permres$byGene[g,c("FDR.below.05","inputDE.foldchange","meanCount")]
+            if(threshold != 0.05){
+		la[["DEGs"]][,1] <- apply(permres$FDR[g,],1,threshold=threshold,FUN=function(x,threshold){ sum(x < threshold) })
+            }
             la[["DEGs"]][,2] <- abs(log2(la[["DEGs"]][,2]))
             la[["DEGs"]][,3] <- log(la[["DEGs"]][,3])
-            names(la[["DEGs"]])[2:3] <- c("absLog2FC","logMeanCount")
+            names(la[["DEGs"]]) <- c("FDR.below.threshold","absLog2FC","logMeanCount")
           }else{
             la[["FP"]] <- apply(permres$FDR,2,threshold=threshold,FUN=function(x,threshold){ sum(x < threshold) })
           }

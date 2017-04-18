@@ -16,7 +16,7 @@ A list with the following slots:
 `nbComps: number of comparisons.
 `FP: number of false (or spurious) positives for each comparison.
 `TP: (only if the permutations were generated with addDE=TRUE) The number of true positives for each comparison.
-`DEGs: (only if the permutations were generated with addDE=TRUE) a data.frame containing, for each gene, the number of times it was found with a FDR below 0.05, the absLog2FC introduced in the input, and the mean fragment count.
+`DEGs: (only if the permutations were generated with addDE=TRUE) a data.frame containing, for each gene, the number of times it was found with a FDR below the threshold, the absLog2FC introduced in the input, and the mean fragment count.
 }
 \description{
 readPermResults
