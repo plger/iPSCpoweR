@@ -76,6 +76,13 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     DEgenes <- .randomDEgenes(nrow(agc), addDE.foldchanges, addDE.nbPerFC)
     DEfcs <- rep(c(addDE.foldchanges,1/addDE.foldchanges),addDE.nbPerFC)
     # select combinations of samples
+    if(!("sex" %in% colnames(m))){
+	if("Sex" %in% colnames(m)){
+		m$sex <- m$Sex
+	}else{
+		m$sex <- "Male"
+	}
+    }
     id <- m$sex[!duplicated(m$individual)]
     names(id) <- m$individual[!duplicated(m$individual)]
     t <- table(m$individual)
@@ -87,12 +94,13 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
         c2$sex.balanced <- apply(c2,1,id=id,nbIndividuals=nbIndividuals, FUN=function(x,nbIndividuals,id){ .getSexRatio(x[1:nbIndividuals[1]],id)==.getSexRatio(x[nbIndividuals[1]+1:nbIndividuals[2]],id) })
         c2 <- c2[which(c2$sex.balanced),]
     }else{
-        c2 <- as.data.frame(t(combn(unique(m$individual[which(m$sex=="Male")]),sum(nbIndividuals))),stringsAsFactors=F)
-        if(nrow(c2) > (2/3*maxTests)) c2 <- c2[sample(nrow(c2),2/3*maxTests),]
-        c3 <- as.data.frame(t(combn(unique(m$individual[which(m$sex=="Female")]),sum(nbIndividuals))),stringsAsFactors=F)
-        if(nrow(c3) > (2/3*maxTests)) c3 <- c3[sample(nrow(c3),2/3*maxTests),]
-        c2 <- rbind(c2,c3)
-        rm(c3)
+	sexes <- table(m$sex)
+	c2 <- do.call(rbind,lapply(names(sexes),m=m,maxTests=maxTests,nbIndividuals=nbIndividuals,st=sexes,FUN=function(x,m,maxTests,nbIndividuals,st){
+		nn <- ceiling(1.2*maxTests*st[x]/sum(st))
+		c3 <- as.data.frame(t(combn(unique(m$individual[which(m$sex==x)]),sum(nbIndividuals))),stringsAsFactors=F)
+		if(nrow(c3) > (nn)) c3 <- c3[sample(nrow(c3),nn),]
+		return(c3)
+	}))
     }
     if(nrow(c2) > maxTests)	c2 <- c2[sample(nrow(c2),maxTests),]
 
@@ -1059,4 +1067,50 @@ combinePermResults <- function(list1, list2, balance=TRUE){
 	p2$DEGs[,1] <- round((p2$DEGs[,1]/p2$nbComps)*ll$nbComps)
 	ll$DEGs <- rbind(p1$DEGs,p2$DEGs)
 	return(ll)
+}
+
+
+#' plotPrecisionScatter
+#'
+#' Plots the sensitivity and false discovery rate of a list of results of permutation analyses (i.e. permres files or output of readPermResults).
+#'
+#' @param results A vector of permutation results files or the output of `readPermResults`.
+#' @param plotSD Logical; whether to plot the standard deviation for each point (default TRUE).
+#' @param x X axis value, either "fp" (false positives) or "fdr" (false discovery rate, default).
+#' @param labels An optional character vector of labels to print.
+#' @param acol color of the SD bars (default gray)
+#' @param alty line type of the SD bars (default solid)
+#' @param alwd line width of the SD bars (default 1)
+#' @param ... arguments passed to the plot function.
+#'
+#' @return Nothing, but generates a plot.
+#'
+#' @export
+plotPrecisionScatter <- function(results, plotSD=T, x="fdr", labels=NULL, acol="grey", alty=1, alwd=1, threshold=0.05, ...){
+	x <- match.arg(tolower(x),c("fp","fdr"))
+	if(class(results)=="character")	results <- readPermResults(results, threshold=threshold)
+	msens <- sapply(results, FUN=function(x){ mean(x$TP)/nrow(x$DEGs) })
+	if(x=="fdr"){
+		mfpr <- sapply(results, FUN=function(x){ mean(x$FP/(x$FP+x$TP)) })
+	}else{
+		mfpr <- sapply(results, FUN=function(x){ mean(x$FP) })
+	}	
+	
+	xlab <- ifelse(x=="fdr","False/spurious discovery rate","False/spurious DEGs")
+	if(plotSD){
+		sensd <- sapply(results, FUN=function(x){ sd(x$TP/nrow(x$DEGs)) })
+		if(x=="fdr"){
+			fprd <- sapply(results, FUN=function(x){ sd(x$FP/(x$FP+x$TP)) })
+		}else{
+			fprd <- sapply(results, FUN=function(x){ sd(x$FP) })
+		}			
+		plot(mfpr, msens, xlim=range(c(mfpr-fprd, mfpr+fprd)), ylim=range(c(msens-sensd,msens+sensd)), ylab="Sensitivity", xlab=xlab, ...)
+		arrows(mfpr, msens-sensd, mfpr, msens+sensd, length=0.05, angle=90, code=3, col=acol, lty=alty, lwd=alwd)
+		arrows(mfpr-fprd, msens, mfpr+fprd, msens, length=0.05, angle=90, code=3, col=acol, lty=alty, lwd=alwd)
+	}else{
+		plot(mfpr, msens, ylab="Sensitivity", xlab=xlab, ...)
+	}
+	if(!is.null(labels)){
+		text(mfpr, msens, labels=labels)
+	}
 }
