@@ -40,6 +40,7 @@ The package's functions take care of loading and handling the data. If you wish 
 
 The data from Carcamo-Orive et al. (Cell Stem Cell 2016) is also included in the package to allow its usage in the permutation DEA analyses. To do so, you must first load the GSE79636 object, which contains both the expression and annotation matrices:
 ```{r loaddata1}
+library(iPSCpoweR)
 data("GSE79636")
 summary(GSE79636)
 ```
