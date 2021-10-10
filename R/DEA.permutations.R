@@ -44,6 +44,7 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     if(length(nbClone) != 1 | !(nbClone %in% c(1,2)))  stop("nbClone should be either 1 or 2.")
     if(nbClone==2 & !useOnlyMulticlone) stop("useOnlyMulticlone cannot be FALSE when nbClone=2")
     if(length(nbIndividuals)==1) nbIndividuals <- c(nbIndividuals,nbIndividuals)
+    if(sum(nbIndividuals)>14 && length(unique(nbIndividuals))>1) stop("Unbalanced groups are only implemented for sum of group sizes <=14")
     
     saveToFilePrefix <- paste(nbIndividuals[1],"indiv.vs.",nbIndividuals[2],"indiv.",nbClone,ifelse(nested,".nested",""),sep="")
     titlePrefix <- paste(nbIndividuals[1]," individuals vs ",nbIndividuals[2]," individuals (",ifelse(nbClone==2,"2 clones","1 clone"),"/individual)",sep="")
@@ -88,19 +89,33 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     t <- table(m$individual)
     if(!quiet) message("Looking for combinations...")
     if( nbClone > 1 | useOnlyMulticlone) t <- t[which(t>1)]
-    if( (nbClone > 1 | useOnlyMulticlone) & !fasterCombinations){
+    if( nbClone > 1 | useOnlyMulticlone){
         c2 <- as.data.frame(t(combn(names(t),sum(nbIndividuals))),stringsAsFactors=F)
         if(nrow(c2) > maxTests*20) c2 <- c2[sample(nrow(c2),20*maxTests),]
         c2$sex.balanced <- apply(c2,1,id=id,nbIndividuals=nbIndividuals, FUN=function(x,nbIndividuals,id){ .getSexRatio(x[1:nbIndividuals[1]],id)==.getSexRatio(x[nbIndividuals[1]+1:nbIndividuals[2]],id) })
         c2 <- c2[which(c2$sex.balanced),]
+    }else if(sum(nbIndividuals) <= min(sexes <- table(id))){
+  	  c2 <- do.call(rbind,lapply(names(sexes),m=m,maxTests=maxTests,nbIndividuals=nbIndividuals,st=sexes,FUN=function(x,m,maxTests,nbIndividuals,st){
+    		nn <- ceiling(1.2*maxTests*st[x]/sum(st))
+    		c3 <- as.data.frame(t(combn(unique(m$individual[which(m$sex==x)]),sum(nbIndividuals))),stringsAsFactors=F)
+    		if(nrow(c3) > (nn)) c3 <- c3[sample(nrow(c3),nn),]
+    		return(c3)
+    	}))
     }else{
-	sexes <- table(m$sex)
-	c2 <- do.call(rbind,lapply(names(sexes),m=m,maxTests=maxTests,nbIndividuals=nbIndividuals,st=sexes,FUN=function(x,m,maxTests,nbIndividuals,st){
-		nn <- ceiling(1.2*maxTests*st[x]/sum(st))
-		c3 <- as.data.frame(t(combn(unique(m$individual[which(m$sex==x)]),sum(nbIndividuals))),stringsAsFactors=F)
-		if(nrow(c3) > (nn)) c3 <- c3[sample(nrow(c3),nn),]
-		return(c3)
-	}))
+      nbFemales <- sum(nbIndividuals)*(max(sexes)/sum(sexes))
+      if((ceiling(nbFemales) %% 2)==0){
+        nbFemales <- ceiling(nbFemales)
+      }else{
+        nbFemales <- floor(nbFemales)
+      }
+      fem <- rev(names(sort(sexes)))[1]
+      nbMales <- sum(nbIndividuals)-nbFemales
+      a <- t(sapply( 1:maxTests, u=unique(m$individual[which(m$sex==fem)]), FUN=function(x,u) sort(sample(u, nbFemales))))
+      a <- a[!duplicated(cbind(t(apply(a[,seq_len(nbFemales/2)],1,sort)), t(apply(a[,-seq_len(nbFemales/2)],1,sort)))),]
+      b <- t(sapply( seq_len(nrow(a)), u=unique(m$individual[which(m$sex!=fem)]), FUN=function(x,u) sort(sample(u, nbMales))))
+      c2 <- cbind(a[,seq_len(nbFemales/2)], b[,seq_len(floor(nbMales/2))], 
+                  a[,-seq_len(nbFemales/2)], b[,-seq_len(floor(nbMales/2))] )
+      c2 <- as.data.frame(c2)
     }
     if(nrow(c2) > maxTests)	c2 <- c2[sample(nrow(c2),maxTests),]
 
