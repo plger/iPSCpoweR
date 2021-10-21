@@ -19,4 +19,3 @@ A list with two slots: `dat` containing the aggregated data, and `annotation` co
 \description{
 Aggregate expression data from technical replicates
 }
-

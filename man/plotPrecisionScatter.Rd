@@ -4,8 +4,17 @@
 \alias{plotPrecisionScatter}
 \title{plotPrecisionScatter}
 \usage{
-plotPrecisionScatter(results, plotSD = T, x = "fdr", labels = NULL,
-  acol = "grey", alty = 1, alwd = 1, threshold = 0.05, ...)
+plotPrecisionScatter(
+  results,
+  plotSD = T,
+  x = "fdr",
+  labels = NULL,
+  acol = "grey",
+  alty = 1,
+  alwd = 1,
+  threshold = 0.05,
+  ...
+)
 }
 \arguments{
 \item{results}{A vector of permutation results files or the output of `readPermResults`.}
@@ -30,4 +39,3 @@ Nothing, but generates a plot.
 \description{
 Plots the sensitivity and false discovery rate of a list of results of permutation analyses (i.e. permres files or output of readPermResults).
 }
-

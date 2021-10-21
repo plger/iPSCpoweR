@@ -21,4 +21,3 @@ A list with the following slots:
 \description{
 readPermResults
 }
-

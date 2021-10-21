@@ -15,4 +15,3 @@ A makeCluster object if parallel is supported and more than one core is used; ot
 \description{
 Initializes multithreading. This does not need to be called directly; the package's functions will call this.
 }
-

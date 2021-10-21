@@ -17,4 +17,3 @@ a dataframe containing the square residuals, with cellular features as rows and 
 \description{
 Computes for each cellular feature the variance explained by each variable.
 }
-

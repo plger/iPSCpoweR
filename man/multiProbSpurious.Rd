@@ -19,4 +19,3 @@ The data.frame d, with the addition columns probDEinPermutations and probFCinPer
 \description{
 Annotates a data.frame of DEA results (such as produced by edgeR's `topTags` function) with the probability of each gene and foldchange in the DEA permutations.
 }
-

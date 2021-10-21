@@ -15,4 +15,3 @@ The corresponding TPM values.
 \description{
 Convert FPKM values to transcripts per million (TPM).
 }
-

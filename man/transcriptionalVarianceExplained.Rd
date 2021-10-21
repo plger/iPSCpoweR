@@ -4,9 +4,16 @@
 \alias{transcriptionalVarianceExplained}
 \title{transcriptionalVarianceExplained}
 \usage{
-transcriptionalVarianceExplained(res = NULL, unit = "tpm",
-  logTransform = T, variables = c("sex", "individual"), doPlot = TRUE,
-  mixed = TRUE, formula = NULL, ncores = NULL)
+transcriptionalVarianceExplained(
+  res = NULL,
+  unit = "tpm",
+  logTransform = T,
+  variables = c("sex", "individual"),
+  doPlot = TRUE,
+  mixed = TRUE,
+  formula = NULL,
+  ncores = NULL
+)
 }
 \arguments{
 \item{unit}{Either "tpm" (default), "fpkm", or "counts".}
@@ -29,4 +36,3 @@ a dataframe containing the square residuals, with genes as rows and explanatory 
 \description{
 Computes for each gene the variance explained by each variable.
 }
-

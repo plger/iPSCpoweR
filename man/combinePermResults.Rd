@@ -19,4 +19,3 @@ A list of merged permutation results.
 \description{
 Merges the respective elements of two lists of permutation analyses (i.e. output of readPermResults).
 }
-

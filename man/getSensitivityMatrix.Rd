@@ -21,4 +21,3 @@ either a heatmap or a matrix.
 \description{
 Retrieves and eventually plot a sensitivity matrix across foldchanges and expression levels
 }
-

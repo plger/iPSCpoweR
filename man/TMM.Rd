@@ -15,4 +15,3 @@ A dataframe of normalized read counts.
 \description{
 A wrapper for edgeR's TMM normalization
 }
-

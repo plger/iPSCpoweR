@@ -4,8 +4,12 @@
 \alias{getRecurrentGenes}
 \title{getRecurrentGenes}
 \usage{
-getRecurrentGenes(permResults, removeInputDE = TRUE,
-  varToFetch = "pval.below.05", d = NULL)
+getRecurrentGenes(
+  permResults,
+  removeInputDE = TRUE,
+  varToFetch = "pval.below.05",
+  d = NULL
+)
 }
 \arguments{
 \item{permResults}{Either the results of the `DEA.permutateIndividuals` or `DEA.permutateClones` function, or a character vector of the files in which the outpout of these functions was save.}
@@ -22,4 +26,3 @@ A data.frame.
 \description{
 Returns the frequencing of each gene being found differentially expressed in the permutation analyses.
 }
-

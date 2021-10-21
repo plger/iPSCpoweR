@@ -5,12 +5,14 @@
 #' @param nbIndividuals Either a positive integer, or a vector of positive integers of length 2, indicating the number of individuals in each group (default 2).
 #' @param maxTests The maximum number of tests to run (default 50).
 #' @param nbClone The number of iPSC clones to consider from each individual (default 2)
-#' @param res The result of `aggByClone(getGeneExpr())`, optional and used only to speed up multiple calls or use a custom dataset.
+#' @param res The dataset to use. Should be a list with two slots (`annotation` and `dat`), as the object available in `data("GSE79636")`.
+#' If left NULL, the HipSci dataset is automatically fetched and aggregated (to avoid doing this everything when calling the function with different designs, 
+#' first run `aggByClone(getGeneExpr())` and pass its result via this argument.
 #' @param useOnlyMulticlone Logical; whether to use only the samples that have more than one clone (default TRUE). Disabling this greatly increase the number of possible combinations, but will make the search for viable combinations _very_ slow. It should be used only if insufficient viable combinations are available (e.g. for nbIndividuals > 5).
 #' @param seed The seed (for randomization)
 #' @param addDE Logical; whether to add random differentially-expressed genes (default FALSE).
-#' @param addDE.foldchanges A numeric vector of foldchanges to add (will use the given foldchanges and their inverse, applied on the first group). Default c(1.1,1.25,1.5,2,3,5).
-#' @param addDE.nbPerFC The number of DEGs for each foldchange (default 5).
+#' @param addDE.foldchanges A numeric vector of foldchanges to add (will use the given foldchanges and their inverse, applied on the first group).
+#' @param addDE.nbPerFC The number of DEGs for each foldchange.
 #' @param doSave Whether to save the results (default TRUE).
 #' @param returnResults Whether to return the results (default FALSE).
 #' @param ncores Integer; number of cores to use. Defaults to detected number of cores minus one.
@@ -35,7 +37,7 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
 					doSave=TRUE, 
 					returnResults=FALSE, 
 					ncores=NULL, quiet=FALSE, 
-					filter=NULL, 
+					filter=function(x) sum(x>10)>2, 
 					nested=FALSE, 
 					fasterCombinations=FALSE, 
 					DEAfunc=edgeRwrapper){
@@ -44,10 +46,11 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     if(length(nbClone) != 1 | !(nbClone %in% c(1,2)))  stop("nbClone should be either 1 or 2.")
     if(nbClone==2 & !useOnlyMulticlone) stop("useOnlyMulticlone cannot be FALSE when nbClone=2")
     if(length(nbIndividuals)==1) nbIndividuals <- c(nbIndividuals,nbIndividuals)
-    if(sum(nbIndividuals)>14 && length(unique(nbIndividuals))>1) stop("Unbalanced groups are only implemented for sum of group sizes <=14")
     
-    saveToFilePrefix <- paste(nbIndividuals[1],"indiv.vs.",nbIndividuals[2],"indiv.",nbClone,ifelse(nested,".nested",""),sep="")
-    titlePrefix <- paste(nbIndividuals[1]," individuals vs ",nbIndividuals[2]," individuals (",ifelse(nbClone==2,"2 clones","1 clone"),"/individual)",sep="")
+    saveToFilePrefix <- paste(nbIndividuals[1],"indiv.vs.",nbIndividuals[2],
+                              "indiv.",nbClone,ifelse(nested,".nested",""),sep="")
+    titlePrefix <- paste(nbIndividuals[1]," individuals vs ",nbIndividuals[2],
+                         " individuals (",ifelse(nbClone==2,"2 clones","1 clone"),"/individual)",sep="")
 
     DEsamples <- 1:(nbClone*nbIndividuals[1])
     
@@ -56,8 +59,9 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     agc <- res$dat
     rm(res)
     if(!is.null(filter)){
-	if(!("function" %in% class(filter)))	warning("The filter argument is not a function - will be ignored.")
-	agc <- agc[which(apply(agc,1,FUN=filter)),]
+    	if(!("function" %in% class(filter)))
+    	   warning("The filter argument is not a function - will be ignored.")
+    	agc <- agc[which(apply(agc,1,FUN=filter)),]
     }
     
     set.seed(seed)
@@ -65,11 +69,11 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     if(!quiet)  message(titlePrefix)
 
     if(nested){
-	if(nbClone < 2) stop("nested analysis can only be enabled if nbClone>1")
-	nested <- m$individual
-	names(nested) <- row.names(m)
-    }else{
-	nested <- NULL
+      	if(nbClone < 2) stop("nested analysis can only be enabled if nbClone>1")
+      	nested <- m$individual
+      	names(nested) <- row.names(m)
+      }else{
+    	  nested <- NULL
     }
     
     # select input differentially-expressed genes
@@ -78,13 +82,16 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     DEfcs <- rep(c(addDE.foldchanges,1/addDE.foldchanges),addDE.nbPerFC)
     # select combinations of samples
     if(!("sex" %in% colnames(m))){
-	if("Sex" %in% colnames(m)){
-		m$sex <- m$Sex
-	}else{
-		m$sex <- "Male"
-	}
+    	if("Sex" %in% colnames(m)){
+    		m$sex <- m$Sex
+    	}else{
+    		m$sex <- "Male"
+    	}
     }
     id <- m$sex[!duplicated(m$individual)]
+    if(sum(nbIndividuals)>min(table(id)) && length(unique(nbIndividuals))>1)
+      stop("Unbalanced groups are only implemented for sum of group sizes larger than the number of individuals in the smallest sex.")
+    
     names(id) <- m$individual[!duplicated(m$individual)]
     t <- table(m$individual)
     if(!quiet) message("Looking for combinations...")
@@ -497,230 +504,6 @@ cellpheno.permutateIndividuals <- function(nbIndividuals=2, nbClone=2, maxTests=
     return(res)
 }
 
-#' edgeRwrapper
-#'
-#' Performs one differential expression analysis using edgeR.
-#'
-#' @param e the expression matrix
-#' @param mm the design model (as created by the `model.matrix()' function), for paired analyses only. Default NULL.
-#' @param DEsamples the index of the samples in which the differential expression was added. Mandatory if mm=NULL, ignored otherwise.
-#' @param paired Logical; whether the analysis should be paired or not.
-#' @param nested Ignored; for consistency with voomWrapper.
-#'
-#' @return A data.frame.
-#'
-#' @export
-edgeRwrapper <- function(e, mm=NULL, DEsamples=NULL, paired=FALSE, nested=NULL){
-    if(paired & !is.null(mm)){
-        row.names(mm) <- colnames(e)
-        dds <- DGEList(e)
-        dds <- calcNormFactors(dds)
-        dds <- estimateDisp(dds, mm)
-        dds <- glmFit(dds, mm)
-        res <- as.data.frame(topTags(glmLRT(dds,"group2"),nrow(e)))
-    }else{
-        if(is.null(DEsamples))  stop("DEsamples is null!")
-        groups <- rep("B",ncol(e))
-        groups[DEsamples] <- "A"
-        dds <- DGEList(e,group=groups)
-        dds <- calcNormFactors(dds)
-        capture.output({dds <- estimateDisp(dds)})
-        res <- as.data.frame(topTags(exactTest(dds),nrow(e)))
-    }
-    res[row.names(e),]
-}
-
-
-
-#' voomWrapper
-#'
-#' Performs one differential expression analysis using voom
-#'
-#' @param e the expression matrix
-#' @param mm the design model (as created by the `model.matrix()' function), for paired analyses only. Default NULL.
-#' @param nested NULL or character vector of size=ncol(e), indicating the blocking variable (default NULL).
-#' @param DEsamples the index of the samples in which the differential expression was added. Mandatory if mm=NULL, ignored otherwise.
-#' @param paired Ignored; for consistency with edgeRwrapper.
-#'
-#' @return A data.frame.
-#'
-#' @export
-voomWrapper <- function(e, mm=NULL, nested=NULL, DEsamples=NULL, paired=NULL){
-    if(is.null(mm)){
-	d <- data.frame(row.names=colnames(e), group=rep("B",ncol(e)), stringsAsFactors=F)
-	d$group[DEsamples] <- "A"
-	mm <- model.matrix(~group,data=d)
-    }
-    y <- calcNormFactors(DGEList(e))
-    if(!is.null(nested)){
-	v <- voom(y,mm)
-	corfit <- duplicateCorrelation(v, mm, block=nested)
-	v <- voom(y, mm, block=nested, correlation=corfit$consensus.correlation)
-	fit <- lmFit(v, mm, block=nested, correlation=corfit$consensus.correlation)
-	fit2 <- eBayes(fit)
-	res <- topTable(fit2, coef="groupB", number=nrow(e))
-    }else{
-	v <- voom(y,mm)
-	fit <- lmFit(v, mm)
-	fit2 <- eBayes(fit)
-	res <- topTable(fit2, coef="groupB", number=nrow(e))
-    }
-    res <- res[row.names(e),]
-    return(data.frame(row.names=row.names(res), logFC=res$logFC, PValue=res$P.Value, FDR=res$adj.P.Val))
-}
-
-
-#' voomWrapperSumReps
-#'
-#' Performs one differential expression analysis using voom
-#'
-#' @param e the expression matrix
-#' @param mm the design model (as created by the `model.matrix()' function), for paired analyses only. Default NULL.
-#' @param nested NULL or character vector of size=ncol(e), indicating the blocking variable (default NULL).
-#' @param DEsamples the index of the samples in which the differential expression was added. Mandatory if mm=NULL, ignored otherwise.
-#' @param paired Ignored; for consistency with edgeRwrapper.
-#'
-#' @return A data.frame.
-#'
-#' @export
-voomWrapperSumReps <- function(e, mm=NULL, nested=NULL, DEsamples=NULL, paired=NULL){
-    if(is.null(mm)){
-	d <- data.frame(row.names=colnames(e), group=rep("B",ncol(e)), stringsAsFactors=F)
-	d$group[DEsamples] <- "A"
-	mm <- model.matrix(~group,data=d)
-    }
-    if(!is.null(nested)){
-	e2 <- data.frame(row.names=row.names(e))
-	for(s in unique(nested)) e2[[s]] <- rowSums(e[,which(nested==s)])
-	e <- e2
-	group <- d$group[which(!duplicated(nested))]
-	mm <- model.matrix(~group)
-    }
-    y <- calcNormFactors(DGEList(e))
-    v <- voom(y,mm)
-    fit <- lmFit(v, mm)
-    fit2 <- eBayes(fit)
-    res <- topTable(fit2, coef="groupB", number=nrow(e))
-    res <- res[row.names(e),]
-    return(data.frame(row.names=row.names(res), logFC=res$logFC, PValue=res$P.Value, FDR=res$adj.P.Val))
-}
-
-
-#' voomLmerWrapper
-#'
-#' Performs one differential expression analysis using mixed models (via `lme4::lmer`) on voom-transformed counts
-#'
-#' @param e the expression matrix
-#' @param nested NULL or character vector of size=ncol(e), indicating the blocking variable (default NULL).
-#' @param DEsamples the index of the samples in which the differential expression was added. Mandatory if mm=NULL, ignored otherwise.
-#' @param mm Ignored; for consistency with alternative functions.
-#' @param paired Ignored; for consistency with alternative functions.
-#'
-#' @return A data.frame.
-#'
-#' @export
-voomLmerWrapper <- function(e, nested=NULL, DEsamples=NULL, mm=NULL, paired=NULL){
-    library("lme4")
-    group <- rep("B",ncol(e))
-    group[DEsamples] <- "A"
-    mm <- model.matrix(~group)
-    v <- voom(calcNormFactors(DGEList(e)), mm)
-    res <- topTable(eBayes(lmFit(v,mm)), coef="groupB", number=nrow(e))
-    res <- res[row.names(e),]
-    res[,"P.Value"] <- apply(v,1,nested=nested,group=group,FUN=function(x,group,nested){
-	x <- as.numeric(x)
-	if(is.null(nested)){
-		mod <- lm(x~1+group)
-		summary(mod)[[4]]["groupB","Pr(>|t|)"]
-	}else{
-		mod <- try(lmer(x~1+(1|nested)+group),silent=T)
-		if(!is(mod,"try-error")){
-			a <- drop1(mod, test="Chisq")["group","Pr(Chi)"]
-			if(a>=0) return(a)
-		}
-	}
-	return(1)
-    })
-    res$FDR <- p.adjust(res$P.Value, method="fdr")
-    return(data.frame(row.names=row.names(res), logFC=res$logFC, PValue=res$P.Value, FDR=res$FDR))
-}
-
-
-#' vstLmerWrapper
-#'
-#' Performs one differential expression analysis using mixed models (via `lme4::lmer`) on `DESeq2` vst-transformed counts
-#'
-#' @param e the expression matrix
-#' @param nested NULL or character vector of size=ncol(e), indicating the blocking variable (default NULL).
-#' @param DEsamples the index of the samples in which the differential expression was added. Mandatory if mm=NULL, ignored otherwise.
-#' @param mm Ignored; for consistency with alternative functions.
-#' @param paired Ignored; for consistency with alternative functions.
-#'
-#' @return A data.frame.
-#'
-#' @export
-vstLmerWrapper <- function(e, nested=NULL, DEsamples=NULL, mm=NULL, paired=NULL){
-    library(DESeq2)
-    library("lme4")
-    group <- rep("B",ncol(e))
-    group[DEsamples] <- "A"
-    for(i in 1:ncol(e)) e[,i] <- as.integer(floor(e[,i]))
-    cds <- DESeqDataSetFromMatrix(countData=e, colData=data.frame(row.names=colnames(e), group=as.factor(group)), design=~group)
-    cds <- estimateSizeFactors(cds)
-    e <- assay(vst(cds, blind=T))
-    res <- data.frame(row.names=row.names(e), logFC=rep(NA, nrow(e)))
-    res$PValue <- apply(e,1,group=group,nested=nested,FUN=function(x,group,nested){
-	x <- as.numeric(x)
-	if(is.null(nested)){
-		mod <- lm(x~1+group)
-		summary(mod)[[4]]["groupB","Pr(>|t|)"]
-	}else{
-		mod <- try(lmer(x~1+(1|nested)+group),silent=T)
-		if(!is(mod,"try-error")){
-			a <- drop1(mod, test="Chisq")["group","Pr(Chi)"]
-			if(a>=0) return(a)
-		}
-	}
-	return(1)
-    })
-    res$FDR <- p.adjust(res$PValue, method="fdr")
-    return(res)
-}
-
-
-#' glmmWrapper
-#'
-#' Performs one differential expression analysis using mixed models (via `MASS::glmmPQL`) and quasipoisson distribution.
-#'
-#' @param e the expression matrix
-#' @param nested character vector of size=ncol(e), indicating the blocking variable
-#' @param DEsamples the index of the samples in which the differential expression was added. Mandatory if mm=NULL, ignored otherwise.
-#' @param mm Ignored; for consistency with alternative functions.
-#' @param paired Ignored; for consistency with alternative functions.
-#'
-#' @return A data.frame.
-#'
-#' @export
-glmmWrapper <- function(e, nested, DEsamples=NULL, mm=NULL, paired=NULL){
-    library("MASS")
-    group <- rep("B",ncol(e))
-    group[DEsamples] <- "A"
-    mm <- model.matrix(~group)
-    nf <- calcNormFactors(e)
-    v <- voom(calcNormFactors(DGEList(e)), mm)
-    res <- topTable(eBayes(lmFit(v,mm)), coef="groupB", number=nrow(e))
-    res <- res[row.names(e),]
-    res[,"P.Value"] <- apply(e,1,nf=nf, group=group, nested=nested,FUN=function(x,nf,group,nested){
-	x <- log(as.numeric(x)+1)
-	mod <- try(glmmPQL(x~1+nf+group, ~1|nested, family="quasipoisson"),silent=T)
-	if(!is(mod,"try-error")){
-		return(summary(mod)$tTable[3,5])
-	}
-	return(1)
-    })
-    res$FDR <- p.adjust(res$P.Value, method="fdr")
-    return(data.frame(row.names=row.names(res), logFC=res$logFC, PValue=res$P.Value, FDR=res$FDR))
-}
 
 
 

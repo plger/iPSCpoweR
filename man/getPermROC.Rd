@@ -4,9 +4,21 @@
 \alias{getPermROC}
 \title{getPermROC}
 \usage{
-getPermROC(permResults, minPts = 100, qprobs = c(0.05, 0.95), main = NULL,
-  col = "blue", type = "b", lty = 1, add = F, lwd = 2,
-  showAUC = !add, returnCoords = FALSE, pch = 1, ncores = 1)
+getPermROC(
+  permResults,
+  minPts = 100,
+  qprobs = c(0.05, 0.95),
+  main = NULL,
+  col = "blue",
+  type = "b",
+  lty = 1,
+  add = F,
+  lwd = 2,
+  showAUC = !add,
+  returnCoords = FALSE,
+  pch = 1,
+  ncores = 1
+)
 }
 \arguments{
 \item{permResults}{Either the results of the `DEA.permutateIndividuals` or `DEA.permutateClones` function, or a character vector of length 1 indicating the files in which such an object was saved.}
@@ -37,4 +49,3 @@ Produces a plot, or returns a list with the slots `sens` and `spec` if returnCoo
 \description{
 Plots the ROC curve of permutation DEAs results
 }
-

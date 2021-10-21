@@ -4,8 +4,7 @@
 \alias{getSensitivityMatrices}
 \title{getSensitivityMatrices}
 \usage{
-getSensitivityMatrices(reslist, bins = 5, unlogExpr = T,
-  display_numbers = T)
+getSensitivityMatrices(reslist, bins = 5, unlogExpr = T, display_numbers = T)
 }
 \arguments{
 \item{reslist}{A list of analysis results, such as produced by the `readPermResults()` function.}
@@ -20,4 +19,3 @@ a heatmap.
 \description{
 Plot a joined sensitivity matrix across foldchanges and expression levels
 }
-

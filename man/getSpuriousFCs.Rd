@@ -17,4 +17,3 @@ A vector of log2 foldchanges.
 \description{
 Returns the log2(foldchange) of all spurious DEGs in results of permutations analyses.
 }
-

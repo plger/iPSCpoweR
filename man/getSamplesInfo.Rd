@@ -17,4 +17,3 @@ A data.frame.
 \description{
 Returns an annotation of the samples used.
 }
-

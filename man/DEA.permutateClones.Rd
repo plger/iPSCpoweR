@@ -4,11 +4,23 @@
 \alias{DEA.permutateClones}
 \title{DEA.permutateClones}
 \usage{
-DEA.permutateClones(nbIndividuals = 2, maxTests = 50, res = NULL,
-  seed = 1, addDE = F, addDE.foldchanges = c(1.25, 1.5, 2, 3, 5),
-  addDE.nbPerFC = 10, paired = F, doSave = T, returnResults = F,
-  ncores = NULL, quiet = F, filter = NULL, useExactTest = T,
-  DEAfunc = edgeRwrapper)
+DEA.permutateClones(
+  nbIndividuals = 2,
+  maxTests = 50,
+  res = NULL,
+  seed = 1,
+  addDE = F,
+  addDE.foldchanges = c(1.25, 1.5, 2, 3, 5),
+  addDE.nbPerFC = 10,
+  paired = F,
+  doSave = T,
+  returnResults = F,
+  ncores = NULL,
+  quiet = F,
+  filter = NULL,
+  useExactTest = T,
+  DEAfunc = edgeRwrapper
+)
 }
 \arguments{
 \item{nbIndividuals}{A positive integer indicating the number of individuals to consider (default 2).}
@@ -47,4 +59,3 @@ Nothing (results save to files), or a data.frame if returnResults=TRUE.
 \description{
 Performs differential-expression analyses between groups constituted by corresponding iPSC clones from random individuals (for each individual, one clone is randomly assigned to one group, and the other to the second group).
 }
-

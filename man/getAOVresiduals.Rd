@@ -19,4 +19,3 @@ a numeric vector of squared residuals.
 \description{
 Returns the residuals of x explained by each variable (column of m) using classical analysis of variance.
 }
-

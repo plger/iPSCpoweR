@@ -19,4 +19,3 @@ The area under the curve.
 \description{
 Computes the area under a curve.
 }
-

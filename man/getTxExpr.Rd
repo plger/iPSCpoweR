@@ -12,4 +12,3 @@ getTxExpr(unit = "counts")
 \description{
 Returns the transcript-level expression of the HipSci dataset.
 }
-

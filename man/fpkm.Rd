@@ -19,4 +19,3 @@ A dataframe containing the corresponding FPKM values.
 \description{
 Convert fragment counts to FPKM values, using the sum as library size. By default, effective length is used; set mean.frag.size to 0 to use total (given) length.
 }
-

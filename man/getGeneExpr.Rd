@@ -12,4 +12,3 @@ getGeneExpr(unit = "counts", quiet = F)
 \description{
 Returns the gene-level expression of the HipSci dataset.
 }
-

@@ -17,4 +17,3 @@ The probability of the gene and/or foldchange in the permutation analyses.
 \description{
 Returns the probability of a given gene and/or foldchange in the permutation analyses.
 }
-

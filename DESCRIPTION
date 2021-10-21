@@ -1,13 +1,13 @@
 Package: iPSCpoweR
 Type: Package
 Title: iPSCpoweR: transcriptomics-based evaluation of experimental designs for iPSC disease modeling
-Version: 0.3
+Version: 0.4
 Date: 2017-03-25
 Author: Pierre-Luc Germain
 Maintainer: <pierre.germain@ieo.eu>
 Description: Performs permutation analyses on iPSC transcriptomic datasets such as HipSci's in order to assess power and specificity of different experimental designs for iPSC disease-modeling.
 License: GPL
-RoxygenNote: 5.0.1
+RoxygenNote: 7.1.2
 VignetteBuilder: rmarkdown, knitr
 Imports: limma, edgeR
 Suggests: pheatmap, grid, beanplot, LSD, lme4, MASS, DESeq2

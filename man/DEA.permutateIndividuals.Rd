@@ -4,12 +4,25 @@
 \alias{DEA.permutateIndividuals}
 \title{DEA.permutateIndividuals}
 \usage{
-DEA.permutateIndividuals(nbIndividuals = 2, maxTests = 50, nbClone = 2,
-  res = NULL, useOnlyMulticlone = TRUE, seed = 1, addDE = FALSE,
-  addDE.foldchanges = c(1.25, 1.5, 2, 3, 5), addDE.nbPerFC = 10,
-  doSave = TRUE, returnResults = FALSE, ncores = NULL, quiet = FALSE,
-  filter = NULL, nested = FALSE, fasterCombinations = FALSE,
-  DEAfunc = edgeRwrapper)
+DEA.permutateIndividuals(
+  nbIndividuals = 2,
+  maxTests = 50,
+  nbClone = 2,
+  res = NULL,
+  useOnlyMulticlone = TRUE,
+  seed = 1,
+  addDE = FALSE,
+  addDE.foldchanges = c(1.25, 1.5, 2, 3, 5),
+  addDE.nbPerFC = 10,
+  doSave = TRUE,
+  returnResults = FALSE,
+  ncores = NULL,
+  quiet = FALSE,
+  filter = function(x) sum(x > 10) > 2,
+  nested = FALSE,
+  fasterCombinations = FALSE,
+  DEAfunc = edgeRwrapper
+)
 }
 \arguments{
 \item{nbIndividuals}{Either a positive integer, or a vector of positive integers of length 2, indicating the number of individuals in each group (default 2).}
@@ -26,9 +39,9 @@ DEA.permutateIndividuals(nbIndividuals = 2, maxTests = 50, nbClone = 2,
 
 \item{addDE}{Logical; whether to add random differentially-expressed genes (default FALSE).}
 
-\item{addDE.foldchanges}{A numeric vector of foldchanges to add (will use the given foldchanges and their inverse, applied on the first group). Default c(1.1,1.25,1.5,2,3,5).}
+\item{addDE.foldchanges}{A numeric vector of foldchanges to add (will use the given foldchanges and their inverse, applied on the first group).}
 
-\item{addDE.nbPerFC}{The number of DEGs for each foldchange (default 5).}
+\item{addDE.nbPerFC}{The number of DEGs for each foldchange.}
 
 \item{doSave}{Whether to save the results (default TRUE).}
 
@@ -52,4 +65,3 @@ Nothing (results save to files), or a data.frame if returnResults=TRUE.
 \description{
 Performs differential-expression analyses between samples from random individuals.
 }
-

@@ -4,9 +4,17 @@
 \alias{cellpheno.permutateIndividuals}
 \title{cellpheno.permutateIndividuals}
 \usage{
-cellpheno.permutateIndividuals(nbIndividuals = 2, nbClone = 2,
-  maxTests = 300, logT = FALSE, testfunc = .ttp, agTechRep = mean,
-  doSave = TRUE, returnResults = FALSE, ncores = NULL)
+cellpheno.permutateIndividuals(
+  nbIndividuals = 2,
+  nbClone = 2,
+  maxTests = 300,
+  logT = FALSE,
+  testfunc = .ttp,
+  agTechRep = mean,
+  doSave = TRUE,
+  returnResults = FALSE,
+  ncores = NULL
+)
 }
 \arguments{
 \item{nbIndividuals}{A positive integer indicating the number of individuals in each group (default 2).}
@@ -33,4 +41,3 @@ Nothing (results save to files), or a data.frame if returnResults=TRUE.
 \description{
 Tests for differences in iPSC cellular morphology between groups of random individuals.
 }
-
