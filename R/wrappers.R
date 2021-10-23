@@ -130,8 +130,8 @@ dreamWrapper <- function(e, mm=NULL, nested=NULL, DEsamples=NULL, paired=NULL){
   form <- ~group+(1|individual)
   dds <- DGEList(e)
   dds <- calcNormFactors(dds)
-  vobjDream = voomWithDreamWeights( dds, form, d, BPPARAM=BP )
-  fitmm = suppressWarnings(dream( vobjDream, form, d, BPPARAM=BP ))
+  vobjDream = voomWithDreamWeights( dds, form, d )
+  fitmm = suppressWarnings(dream( vobjDream, form, d ))
   res <- as.data.frame(topTable( fitmm, coef='groupB', number=Inf ))[row.names(e),]
   return(data.frame(row.names=row.names(res), logFC=res$logFC, PValue=res$P.Value, FDR=res$adj.P.Val))
 }

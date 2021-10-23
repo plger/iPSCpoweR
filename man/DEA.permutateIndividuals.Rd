@@ -15,12 +15,12 @@ DEA.permutateIndividuals(
   addDE.foldchanges = c(1.25, 1.5, 2, 3, 5),
   addDE.nbPerFC = 10,
   doSave = TRUE,
-  returnResults = FALSE,
+  returnResults = !doSave,
   ncores = NULL,
   quiet = FALSE,
   filter = function(x) sum(x > 10) > 2,
   nested = FALSE,
-  fasterCombinations = FALSE,
+  fasterCombinations = TRUE,
   DEAfunc = edgeRwrapper
 )
 }
@@ -31,7 +31,9 @@ DEA.permutateIndividuals(
 
 \item{nbClone}{The number of iPSC clones to consider from each individual (default 2)}
 
-\item{res}{The result of `aggByClone(getGeneExpr())`, optional and used only to speed up multiple calls or use a custom dataset.}
+\item{res}{The dataset to use. Should be a list with two slots (`annotation` and `dat`), as the object available in `data("GSE79636")`.
+If left NULL, the HipSci dataset is automatically fetched and aggregated (to avoid doing this everything when calling the function with different designs, 
+first run `aggByClone(getGeneExpr())` and pass its result via this argument.}
 
 \item{useOnlyMulticlone}{Logical; whether to use only the samples that have more than one clone (default TRUE). Disabling this greatly increase the number of possible combinations, but will make the search for viable combinations _very_ slow. It should be used only if insufficient viable combinations are available (e.g. for nbIndividuals > 5).}
 
@@ -45,7 +47,7 @@ DEA.permutateIndividuals(
 
 \item{doSave}{Whether to save the results (default TRUE).}
 
-\item{returnResults}{Whether to return the results (default FALSE).}
+\item{returnResults}{Whether to return the results (default FALSE unless `doSave=FALSE`).}
 
 \item{ncores}{Integer; number of cores to use. Defaults to detected number of cores minus one.}
 

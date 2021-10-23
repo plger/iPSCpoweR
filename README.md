@@ -3,7 +3,16 @@
 This package provides resources for exploring large transcriptomics datasets from human induced pluripotent stem cell (iPSC) lines, run large numbers of differential expression analyses across random groups of individuals, in order to approximate power and guide experimental design. This vignette will guide you through its main usage.
 
 <br/><br/><br/>
-      
+
+# News
+
+Due to changes in underlying packages and in the permutation scheme (to enable analyses with a higher number of individuals), the results now produced by the packages will not be exactly the same as those published in the paper. This does not change the conclusions, but the precise sensitivity/false positive estimates will be different, meaning that you should not compare new results directly with older ones (but rather re-generate everything using the same versions). The main results from the paper (using the HipSci dataset) are reproduced using up-to-date packages [here](results/HipSci/hipsci_results.md).
+
+Some recent changes:
+- the pre-filtering rule used in the paper is now the default (the documentation was contradictory)
+- the permutation scheme now allows for larger numbers of individuals
+- a wrapper was added from the [dream method](https://www.bioconductor.org/packages/devel/bioc/vignettes/variancePartition/inst/doc/dream.html) (see `?dreamWrapper`)
+- the `getSensitivityMatrices` function has been updated to use the `ComplexHeatmap` package if available, making more professional plots.
         
 # Installing the package
 
@@ -35,7 +44,7 @@ The package's functions take care of loading and handling the data. If you wish 
 
 ### Using the GSE79636 dataset
 
-The data from Carcamo-Orive et al. (Cell Stem Cell 2016) is also included in the package to allow its usage in the permutation DEA analyses. To do so, you must first load the GSE79636 object, which contains both the expression and annotation matrices:
+By default, the HipSci data is used. The data from Carcamo-Orive et al. (Cell Stem Cell 2016) is also included in the package to allow its usage in the permutation DEA analyses. To do so, you must first load the GSE79636 object, which contains both the expression and annotation matrices:
 ```
 data("GSE79636")
 summary(GSE79636)
@@ -71,7 +80,7 @@ By default, the permutation functions are multithreaded, using `detetedCores()-1
 
 ## DEA.permutateIndividuals
 
-The `DEA.permutateIndividuals` function constitutes, for each permutation, random groups of sex-balanced individuals. By default, the function will run up to 300 DEA (depending on how many different permutations are possible), each on random but sex-balanced groups of 2 individuals, using 2 iPSC clones per individual.
+The `DEA.permutateIndividuals` function constitutes, for each permutation, random groups of sex-balanced individuals. By default, the function will run up to 50 DEA (depending on how many different permutations are possible), each on random but sex-balanced groups of 2 individuals, using 2 iPSC clones per individual.
 
 The (maximum) number of permutations can be changed with the `maxTests` argument; the number of individual per group can be changed using the `nbIndividuals` argument, and the number of clones (either 1 or 2) can be changed using the `nbClone` argument.
 
@@ -150,19 +159,20 @@ Each such object is itself a list containing:
 * `TP: (only if the permutations were generated with addDE=TRUE) The number of true positives for each comparison.
 * `DEGs: (only if the permutations were generated with addDE=TRUE) a data.frame containing, for each gene, the number of times it was found with a FDR below 0.05, the absLog2FC introduced in the input, and the mean fragment count.
 
-The object(s) in this list can then be used to plot sensitivity matrices (assuming that `addDE` was enabled) using `getSensitivityMatrix`, or to plot the distribution of false positives across permutations:
+We can for instance get the mean number of false positives, as well as (assuming that `addDE` was enabled) true positives and FDR:
+```{r}
+cbind(
+  FP=sapply(pm, FUN=function(x) mean(x$FP)),
+  TP=sapply(pm, FUN=function(x) mean(x$TP)),
+  FDR=sapply(pm, FUN=function(x) mean(x$FP/(x$FP+x$TP)))
+)
 ```
-getSensitivityMatrix(pm[[1]])
-```
+
+The object(s) in this list can also be used to plot sensitivity matrices using `getSensitivityMatrices`:
 
 <p style="text-align: center;"><img src="vignettes/sensMat.png" alt="sensitivity matrix"/></p>
 
-```
-hist(pm[[1]]$FP, xlab="False positives", ylab="Number of permutations",breaks=20)
-```
-
-<p style="text-align: center;"><img src="vignettes/hist.png" alt="false positives"/></p>
-
+<br/>
 
 <div id="plotting-a-roc-curve" class="section level3">
 <h3>Plotting a ROC curve</h3>
@@ -171,20 +181,17 @@ hist(pm[[1]]$FP, xlab="False positives", ylab="Number of permutations",breaks=20
 <p><img src="vignettes/ROC.png"/></p>
 <p>By default, the function will plot the median sensitivity and specificity at sliding p-values (the line and points), as well as the 0.05 and 0.95 quantiles across the different permutations (the shaded area). You can disable the shaded area with <code>qprobs=NA</code>. See <code>?getPermROC</code> for more options.</p>
 
+
+## Note of caution
+
+Because of multiple testing correction, the significance of a statistical test performed on one gene depends on that of other genes. This makes the kind of power analysis that `iPSCpoweR` does tricky, because the FDR/q-values obtained are influence by the magnitude of the spiked-in differential expression. For this reason, the sensitivity and specificity given by the simulations should be interpreted with caution. Depending on the magnitude of the changes in your particular case, your real power might be greater or lower than that given by simulations. The simulations results should therefore chiefly be used to compare experimental settings and analysis methods, and to get a rough idea of your power.
+
 <br/><br/><br/>
       
 
 ## Using a different DEA method in the permutations
 
-By default, permutations are done using edgeR, and without any pre-filtering of the tested genes. The functions however give the user the possibility of changing this in two ways.
-
-### Filtering genes before testing
-
-In both functions, you can use the `filter` argument to set a pre-testing filtering rule. The argument should be passed a function which will be applied to each row of the expression matrix, and should return TRUE if the row is to be kept (tested), and false otherwise. For instance, `filter=function(x){ sum(x>10)>2}` would only include genes that have more than 10 fragments in more than 2 samples.
-
-### Using a custom DEA function
-
-The permutation analysis calls the `edgeRwrapper` function to perform the DEA. This function can be replaced by a custom function, or by some of the other functions already implemented (see below), using the `DEAfunc` argument of either `DEA.permutateIndividuals` or `DEA.permutateClones`. For custom functions, the output should be a data.frame with genes as row.names (in the same order in which they were initially given), and the following columns: `logFC`, `PValue`, `FDR`. The best way to get started writing your own function is too look at `edgeRwrapper` or `voomWrapper`.
+The permutation analysis calls the `edgeRwrapper` function to perform the DEA by default. This function can be replaced by a custom function, or by some of the other functions already implemented (see below), using the `DEAfunc` argument of either `DEA.permutateIndividuals` or `DEA.permutateClones`. For custom functions, the output should be a data.frame with genes as row.names (in the same order in which they were initially given), and the following columns: `logFC`, `PValue`, `FDR`. The best way to get started writing your own function is too look at `edgeRwrapper` or `voomWrapper`.
 
 #### Using the duplicateCorrelation approach for multiple clones
 
@@ -198,7 +205,7 @@ DEA.permutateIndividuals(nbIndividuals = 3, nbClone = 2, addDE = T,
     }, nested = T, DEAfunc = voomWrapper)
 ```
 
-Of note, this approach was the best performing in our study.
+This approach was the best performing in our study.
 
 #### Summing clones' read counts before DEA
 
@@ -206,11 +213,12 @@ You can use the function `voomWrapperSumReps`, which does the same thing as the 
 
 #### Using mixed models
 
-Three functions are available to use `lme4`-based mixed models, considering the individual as a random effect:
+Four functions are available to use mixed models(-like) approaches, considering the individual as a random effect:
 
 * `vstLmerWrapper` runs `DESeq2`'s variance-stabilizing transformation (VST), fits the mixed model ~1+(1|individual)+group (assuming that it is called with `nested=TRUE`), and uses the `drop1` test to assess statistical significance.
 * `voomLmerWrapper` performs similarly, except that it passes the counts through voom instead of DESeq2's VST,
 * `glmmWrapper` fits the mixed moded ~1+(1|individual)+group using `MASS::glmmPLQ` with a quasipoisson dispersion model.
+* `dreamWrapper` fits the linear mixed moded ~1+(1|individual)+group using `variancePartition` with observational weights.
 
 All these methods should be used with the `nested` argument, e.g.:
 ```
@@ -222,9 +230,9 @@ DEA.permutateIndividuals( nbIndividuals = 3,
 	DEAfunc = vstLmerWrapper )
 ```
 
-If `nested=F`, the corresponding model without random effect will be used.
+If `nested=F`, the corresponding model without random effect will be used (not compatible with some methods).
 
-Of note, all three methods are very slow, and according to our study less accurate than the approach based on `limma::duplicateCorrelation` (as discussed above).
+Of note, all four methods are very slow, and according to our study less accurate than the approach based on `limma::duplicateCorrelation` (as discussed above).
 
 
 

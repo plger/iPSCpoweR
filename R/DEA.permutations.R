@@ -14,7 +14,7 @@
 #' @param addDE.foldchanges A numeric vector of foldchanges to add (will use the given foldchanges and their inverse, applied on the first group).
 #' @param addDE.nbPerFC The number of DEGs for each foldchange.
 #' @param doSave Whether to save the results (default TRUE).
-#' @param returnResults Whether to return the results (default FALSE).
+#' @param returnResults Whether to return the results (default FALSE unless `doSave=FALSE`).
 #' @param ncores Integer; number of cores to use. Defaults to detected number of cores minus one.
 #' @param quiet Logical; if TRUE, suppresses progress report (default FALSE)
 #' @param filter Function; the filter for genes to be tested, to be applied to all rows of the expression matrix (default: no filter). An example value for the filter argument would be `sum(x>10)>2', which would only include genes that have more than 10 counts in more than 2 samples.
@@ -35,11 +35,11 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
 					addDE.foldchanges=c(1.25,1.5,2,3,5), 
 					addDE.nbPerFC=10, 
 					doSave=TRUE, 
-					returnResults=FALSE, 
+					returnResults=!doSave, 
 					ncores=NULL, quiet=FALSE, 
 					filter=function(x) sum(x>10)>2, 
 					nested=FALSE, 
-					fasterCombinations=FALSE, 
+					fasterCombinations=TRUE, 
 					DEAfunc=edgeRwrapper){
     library(limma)
     library(edgeR)
@@ -52,7 +52,7 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     titlePrefix <- paste(nbIndividuals[1]," individuals vs ",nbIndividuals[2],
                          " individuals (",ifelse(nbClone==2,"2 clones","1 clone"),"/individual)",sep="")
 
-    DEsamples <- 1:(nbClone*nbIndividuals[1])
+    DEsamples <- seq_len(nbClone*nbIndividuals[1])
     
     if(is.null(res))    res <- aggByClone(getGeneExpr(quiet=quiet))
     m <- res$annotation
@@ -96,10 +96,12 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     t <- table(m$individual)
     if(!quiet) message("Looking for combinations...")
     if( nbClone > 1 | useOnlyMulticlone) t <- t[which(t>1)]
-    if( nbClone > 1 | useOnlyMulticlone){
+    if( (useOnlyMulticlone || nbClone > 1) ){
         c2 <- as.data.frame(t(combn(names(t),sum(nbIndividuals))),stringsAsFactors=F)
         if(nrow(c2) > maxTests*20) c2 <- c2[sample(nrow(c2),20*maxTests),]
-        c2$sex.balanced <- apply(c2,1,id=id,nbIndividuals=nbIndividuals, FUN=function(x,nbIndividuals,id){ .getSexRatio(x[1:nbIndividuals[1]],id)==.getSexRatio(x[nbIndividuals[1]+1:nbIndividuals[2]],id) })
+        c2$sex.balanced <- apply(c2,1, FUN=function(x){
+          .getSexRatio(x[1:nbIndividuals[1]],id)==.getSexRatio(x[nbIndividuals[1]+1:nbIndividuals[2]],id)
+        })
         c2 <- c2[which(c2$sex.balanced),]
     }else if(sum(nbIndividuals) <= min(sexes <- table(id))){
   	  c2 <- do.call(rbind,lapply(names(sexes),m=m,maxTests=maxTests,nbIndividuals=nbIndividuals,st=sexes,FUN=function(x,m,maxTests,nbIndividuals,st){
@@ -135,13 +137,18 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     }
     row.names(c2) <- 1:nrow(c2)
     if(nbClone==2){
-        c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){ x <- as.character(x); paste(c(row.names(m)[which(m$individual %in% x[1:nbIndividuals[1]])],row.names(m)[which(m$individual %in% x[nbIndividuals[1]+1:nbIndividuals[2]])]),collapse=",")})
+        c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
+          x <- as.character(x);
+          paste(c(row.names(m)[which(m$individual %in% x[1:nbIndividuals[1]])],
+                  row.names(m)[which(m$individual %in% x[nbIndividuals[1]+1:nbIndividuals[2]])]),
+                collapse=",")
+        })
     }else{
         c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
             paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),1)] }), collapse=",")
         })    
     }
-    
+
     if(!quiet)  message(paste("Running",nrow(c2),"differential expression analyses"))
     
     d.logFC <- as.data.frame(row.names=row.names(agc),matrix(0,nrow=nrow(agc),ncol=nrow(c2)))
@@ -163,6 +170,11 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
         clusterExport(cl, c("agc"), envir=environment())
         d <- parLapply(cl, as.character(c2$clones), DEgenes=DEgenes, nested=nested, DEfcs=DEfcs, DEAfunc=DEAfunc, DEsamples=DEsamples, progBar=progBar, progFile=f, fun=.doDEA)
         stopCluster(cl)
+        if( (lw <- length(w <- which(sapply(d, FUN=is.null))))>0){
+          warning(w," permutation(s) failed.")
+          d <- d[-w]
+          c2 <- c2[-w,]
+        }
         if(!quiet){
             close(progBar)
             cat("\nDone! Aggregating results...\n")
@@ -178,9 +190,11 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
             if(!quiet)  cat(paste(i,"/",nrow(c2),"\n",sep=""))
             x <- strsplit(as.character(c2$clones[i]),",",fixed=T)[[1]]
             res <- .doDEA(agc[,x], DEAfunc=DEAfunc, DEgenes=DEgenes, DEfcs=DEfcs, DEsamples=DEsamples, nested=nested)
-            d.logFC[,i] <- res$logFC
-            d.PValue[,i] <- res$PValue
-            d.FDR[,i] <- res$FDR
+            if(!is.null(res)){
+              d.logFC[,i] <- res$logFC
+              d.PValue[,i] <- res$PValue
+              d.FDR[,i] <- res$FDR
+            }
         }
     }
 
@@ -321,6 +335,12 @@ DEA.permutateClones <- function(nbIndividuals=2, maxTests=50, res=NULL, seed=1, 
         clusterEvalQ(cl, library(edgeR))
         clusterExport(cl, c("agc"), envir=environment())
         d <- parLapply(cl, as.character(c2$clones), mm=mm, DEgenes=DEgenes, DEfcs=DEfcs, DEAfunc=DEAfunc, DEsamples=1:nbIndividuals[1], paired=paired, nested=NULL, progBar=progBar, progFile=f, fun=.doDEA)
+        if( (lw <- length(w <- which(sapply(d, FUN=is.null))))>0){
+          warning(lw," permutation(s) failed.")
+          d <- d[-w]
+          c2 <- c2[-w,]
+        }
+        
         stopCluster(cl)
         if(!quiet){
             close(progBar)
@@ -494,7 +514,13 @@ cellpheno.permutateIndividuals <- function(nbIndividuals=2, nbClone=2, maxTests=
     if(!is.null(DEgenes) & !is.null(DEfcs)){
         for(i in DEsamples) e[DEgenes,i] <- e[DEgenes,i]*DEfcs
     }
-    res <- DEAfunc(e, mm, DEsamples=DEsamples, paired=paired, nested=nested)
+    res <- tryCatch(
+      DEAfunc(e, mm, DEsamples=DEsamples, paired=paired, nested=nested),
+      error=function(e){
+        warning(e)
+        return(NULL)
+      }
+    )
     if(!is.null(progFile) & !is.null(progBar)){
         prog <- as.numeric(readBin(progFile,"double"))+1
         writeBin(prog,progFile)
@@ -556,80 +582,6 @@ readPermResults <- function(resFiles, threshold=0.05){
     tt[[1]]/tt[[2]]
 }
 
-
-#' getSensitivityMatrix
-#'
-#' Retrieves and eventually plot a sensitivity matrix across foldchanges and expression levels
-#'
-#' @param res A list such as one of the items returned by the `readPermResults()` function.
-#' @param bins Either an integer indicating the number of bins in which to (try to) split the expression levels (default 5), or a list of ranges for binning.
-#' @param unlogExpr Whether to "un-log" read counts for labels (default TRUE).
-#' @param doPlot Whether to plot rather than return the matrix (default TRUE).
-#'
-#' @return either a heatmap or a matrix.
-#'
-#' @export
-getSensitivityMatrix <- function(res, bins=5, unlogExpr=T, doPlot=T){
-    if(!.checkPkg("pheatmap") | !.checkPkg("grid"))	stop("The 'grid' and 'pheatmap' packages must be installed in order to plot the sensitivity matrix.")
-    d <- res$DEGs[order(res$DEGs$logMeanCount),]
-    d$FC <- as.character(2^d$absLog2FC)
-    if(length(bins)==1){
-	cc <- as.character(cut(d$logMeanCount, bins))
-    }else{
-	cc <- sapply(d$logMeanCount,bins=bins,FUN=function(g,bins){
-		which(sapply(bins,g=g,FUN=function(x,g){
-			g >= x[[1]] & g <= x[[2]]
-		}))[[1]]
-	})
-	cc <- sapply(bins,collapse=",",FUN=paste)[cc]
-    }
-    fcs <- sort(unique(d$FC),decreasing=T)
-    m <- matrix(0, nrow=length(fcs),ncol=length(unique(cc)))
-    colnames(m) <- unique(cc)
-    rownames(m) <- fcs
-    for(i in 1:nrow(m)){
-        for(j in 1:ncol(m)){
-            w <- which(cc==colnames(m)[j] & d$FC==rownames(m)[i])
-            m[i,j] <- sum(d$FDR.below.threshold[w])/(length(w)*res$nbComps)
-        }
-    }
-    if(unlogExpr)	colnames(m) <- sapply(colnames(m),FUN=function(x){ paste(round(exp(as.numeric(strsplit(gsub("]","",gsub("(","",x,fixed=T),fixed=T),",")[[1]]))-1),collapse="-") })
-    if(doPlot){
-        require(pheatmap)
-        require(grid)
-        setHook("grid.newpage", function() pushViewport(viewport(x=0.95,y=1,width=0.9, height=0.9, name="vp", just=c("right","top"))), action="prepend")
-        pheatmap(100*m,col=colorRampPalette(c("white","red","darkred"))(100),cluster_rows=F,cluster_cols=F,display_numbers=T,number_format="%.0f %%",number_color="black",border_color=NA,main="Sensitivity by DEGs' foldchange and expression level")
-	setHook("grid.newpage", NULL, "replace")
-	grid.text(ifelse(unlogExpr,"Expression range (median read count)","Expression range, in log(read count)"), y=-0.07, gp=gpar(fontsize=16))
-	grid.text("Foldchange", x=1, rot=90, gp=gpar(fontsize=16))
-    }else{
-        return(m)
-    }
-}
-
-#' getSensitivityMatrices
-#'
-#' Plot a joined sensitivity matrix across foldchanges and expression levels
-#'
-#' @param reslist A list of analysis results, such as produced by the `readPermResults()` function.
-#' @param bins Either an integer indicating the number of bins in which to (try to) split the expression levels (default 5), or a list of ranges for binning.
-#' @param unlogExpr Whether to "un-log" read counts for labels (default TRUE).
-#'
-#' @return a heatmap.
-#'
-#' @export
-getSensitivityMatrices <- function(reslist, bins=5, unlogExpr=T, display_numbers=T){
-    if(!.checkPkg("pheatmap"))	stop("The 'pheatmap' package must be installed in order to plot the sensitivity matrix.")
-    ml <- lapply(reslist,doPlot=F, bins=bins, unlogExpr=unlogExpr,FUN=getSensitivityMatrix)
-    m <- ml[[1]]
-    if(length(ml)>1){
-        for(i in 2:length(ml)){
-            m <- cbind(m,ml[[i]])
-        }
-    }
-    library(pheatmap)
-    pheatmap(100*m,col=colorRampPalette(c("white","red","darkred"))(100),cluster_rows=F,cluster_cols=F,display_numbers=display_numbers,number_format="%.0f%%",number_color="black",border_color=NA,gaps_col=cumsum(lapply(ml,FUN=ncol)))
-}
 
 #' TMM
 #'
