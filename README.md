@@ -2,7 +2,7 @@
 
 This package provides resources for exploring large transcriptomics datasets from human induced pluripotent stem cell (iPSC) lines, run large numbers of differential expression analyses across random groups of individuals, in order to approximate power and guide experimental design. This vignette will guide you through its main usage.
 
-<br/><br/><br/>
+<br/><br/>
 
 # News
 
@@ -12,8 +12,10 @@ Some recent changes:
 - the pre-filtering rule used in the paper is now the default (the documentation was contradictory)
 - the permutation scheme now allows for larger numbers of individuals
 - a wrapper was added from the [dream method](https://www.bioconductor.org/packages/devel/bioc/vignettes/variancePartition/inst/doc/dream.html) (see `?dreamWrapper`)
-- the `getSensitivityMatrices` function has been updated to use the `ComplexHeatmap` package if available, making more professional plots.
-        
+- the `getSensitivityMatrices` function has been updated to use the `ComplexHeatmap` package if available, making more professional plots.        
+	
+<br/><br/>
+
 # Installing the package
 
 To install the package, download it and install it using the following R command:
