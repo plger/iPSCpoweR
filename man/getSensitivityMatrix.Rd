@@ -9,7 +9,8 @@ getSensitivityMatrix(res, bins = 5, unlogExpr = T, doPlot = T)
 \arguments{
 \item{res}{A list such as one of the items returned by the `readPermResults()` function.}
 
-\item{bins}{Either an integer indicating the number of bins in which to (try to) split the expression levels (default 5), or a list of ranges for binning.}
+\item{bins}{Either an integer indicating the number of bins in which to (try to) split the expression levels (default 5), 
+or a vectors of breaks defining the bins.}
 
 \item{unlogExpr}{Whether to "un-log" read counts for labels (default TRUE).}
 

@@ -4,7 +4,8 @@
 #' Use the higher-level function `getSensitivityMatrices` instead.
 #'
 #' @param res A list such as one of the items returned by the `readPermResults()` function.
-#' @param bins Either an integer indicating the number of bins in which to (try to) split the expression levels (default 5), or a list of ranges for binning.
+#' @param bins Either an integer indicating the number of bins in which to (try to) split the expression levels (default 5), 
+#' or a vectors of breaks defining the bins.
 #' @param unlogExpr Whether to "un-log" read counts for labels (default TRUE).
 #' @param doPlot Whether to plot rather than return the matrix (default TRUE).
 #'
@@ -14,16 +15,12 @@
 getSensitivityMatrix <- function(res, bins=5, unlogExpr=T, doPlot=T){
   if(!.checkPkg("pheatmap") | !.checkPkg("grid"))	stop("The 'grid' and 'pheatmap' packages must be installed in order to plot the sensitivity matrix.")
   d <- res$DEGs[order(res$DEGs$logMeanCount),]
+  if(unlogExpr) d$logMeanCount <- exp(d$logMeanCount)
   d$FC <- as.character(2^d$absLog2FC)
   if(length(bins)==1){
     cc <- as.character(cut(d$logMeanCount, bins))
   }else{
-    cc <- sapply(d$logMeanCount,bins=bins,FUN=function(g,bins){
-      which(sapply(bins,g=g,FUN=function(x,g){
-        g >= x[[1]] & g <= x[[2]]
-      }))[[1]]
-    })
-    cc <- sapply(bins,collapse=",",FUN=paste)[cc]
+    cc <- as.character(cut(d$logMeanCount, unique(bins)))
   }
   fcs <- sort(unique(d$FC),decreasing=T)
   m <- matrix(0, nrow=length(fcs),ncol=length(unique(cc)))
@@ -35,7 +32,6 @@ getSensitivityMatrix <- function(res, bins=5, unlogExpr=T, doPlot=T){
       m[i,j] <- sum(d$FDR.below.threshold[w])/(length(w)*res$nbComps)
     }
   }
-  if(unlogExpr)	colnames(m) <- sapply(colnames(m),FUN=function(x){ paste(round(exp(as.numeric(strsplit(gsub("]","",gsub("(","",x,fixed=T),fixed=T),",")[[1]]))-1),collapse="-") })
   if(doPlot){
     require(pheatmap)
     require(grid)
@@ -120,4 +116,3 @@ getSensitivityMatrices <- function(reslist, bins=5, unlogExpr=TRUE, display_numb
   x <- gsub("\\.2$","\n2 clones/indiv",x)
   x
 }
-
