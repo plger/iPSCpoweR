@@ -104,7 +104,7 @@ ggplot(d, aes(x=factor(nbIndiv), y=FP, group=factor(nbIndiv))) + geom_violin(fil
   stat_summary(fun=median, geom = "crossbar", width = 0.5)
 ```
 
-![](analyses_files/figure-markdown_strict/unnamed-chunk-6-1.png)
+![](analyses_files/figure-html/unnamed-chunk-6-1.png)
 
 ## Sensitivity
 
@@ -118,7 +118,7 @@ res <- readPermResults(lf)
 getSensitivityMatrices(res)
 ```
 
-![](analyses_files/figure-markdown_strict/unnamed-chunk-7-1.png)
+![](analyses_files/figure-html/unnamed-chunk-7-1.png)
 
 ### 2 clones per individual
 
@@ -147,7 +147,7 @@ plot_grid(
 )
 ```
 
-![](analyses_files/figure-markdown_strict/unnamed-chunk-9-1.png)
+![](analyses_files/figure-html/unnamed-chunk-9-1.png)
 
 ## FDR
 
@@ -159,7 +159,7 @@ ggplot(d2, aes(x=FDR, y=TP/100, colour=design2, shape=design, label=nbIndiv)) +
 ```
 
 
-![](analyses_files/figure-markdown_strict/unnamed-chunk-10-1.png)
+![](analyses_files/figure-html/unnamed-chunk-10-1.png)
 
 # Session info
 
