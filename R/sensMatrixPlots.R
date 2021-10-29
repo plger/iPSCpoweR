@@ -18,10 +18,10 @@ getSensitivityMatrix <- function(res, bins=5, unlogExpr=T, doPlot=T){
   if(unlogExpr) d$logMeanCount <- exp(d$logMeanCount)
   d$FC <- as.character(2^d$absLog2FC)
   if(length(bins)==1){
-    cc <- as.character(cut(d$logMeanCount, bins))
-  }else{
-    cc <- as.character(cut(d$logMeanCount, unique(bins)))
+    bins <- quantile(d$logMeanCount, probs=c(0,seq_len(bins)/bins))
+    bins <- c(floor(bins[1]), round(bins[2:(length(bins)-1)]), ceiling(bins[length(bins)]))
   }
+  cc <- as.character(cut(d$logMeanCount, unique(bins), dig.lab=5))
   fcs <- sort(unique(d$FC),decreasing=T)
   m <- matrix(0, nrow=length(fcs),ncol=length(unique(cc)))
   colnames(m) <- unique(cc)
@@ -75,14 +75,16 @@ getSensitivityMatrices <- function(reslist, bins=5, unlogExpr=TRUE, display_numb
     names(ml) <- .filenameToTitle(names(ml))
   ml <- lapply(ml, FUN=function(x) round(x*100))
   if(require("ComplexHeatmap", quietly=TRUE)){
-    cell_fun = function(j, i, x, y, width, height, fill) {
-      grid.text(sprintf("%.0f", ml[[m]][i, j]), x, y, gp = grid::gpar(fontsize = 10))
-    }
     if(!display_numbers) cell_fun=NULL
     h <- NULL
+    cellfns <- lapply(ml, FUN=function(res){
+      function(j, i, x, y, width, height, fill){
+        grid.text(sprintf("%.0f", res[i,j]), x, y, gp=gpar(fontsize=10, col="black"))
+      }
+    })
     for(m in seq_along(ml)){
       h <- h + Heatmap(ml[[m]], cluster_rows=FALSE, cluster_columns=FALSE, 
-                       name=ifelse(m==length(ml),"sensitivity",paste0("h",m)), cell_fun=cell_fun, 
+                       name=ifelse(m==length(ml),"sensitivity",paste0("h",m)), cell_fun=cellfns[[m]], 
                        show_heatmap_legend=m==length(ml), column_title=names(ml)[m], ...
               )
     }
@@ -116,3 +118,4 @@ getSensitivityMatrices <- function(reslist, bins=5, unlogExpr=TRUE, display_numb
   x <- gsub("\\.2$","\n2 clones/indiv",x)
   x
 }
+
