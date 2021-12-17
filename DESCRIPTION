@@ -1,7 +1,7 @@
 Package: iPSCpoweR
 Type: Package
 Title: iPSCpoweR: transcriptomics-based evaluation of experimental designs for iPSC disease modeling
-Version: 0.5.2
+Version: 0.5.3
 Date: 2021-10-23
 Author: Pierre-Luc Germain
 Maintainer: <pierre.germain@ieo.eu>

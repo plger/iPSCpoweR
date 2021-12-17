@@ -137,12 +137,13 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     }
     row.names(c2) <- 1:nrow(c2)
     if(nbClone==2){
-        c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
-          x <- as.character(x);
-          paste(c(row.names(m)[which(m$individual %in% x[1:nbIndividuals[1]])],
-                  row.names(m)[which(m$individual %in% x[nbIndividuals[1]+1:nbIndividuals[2]])]),
-                collapse=",")
+        clones1 <- apply(c2[,1:nbIndividuals[1]],1,FUN=function(x){
+          paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),2)] }), collapse=",")
         })
+        clones2 <- apply(c2[,nbIndividuals[1]+1:nbIndividuals[1]],1,FUN=function(x){
+          paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),2)] }), collapse=",")
+        })
+        c2$clones <- paste(clones1, clones2, sep=",")
     }else{
         c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
             paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),1)] }), collapse=",")
