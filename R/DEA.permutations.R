@@ -43,14 +43,13 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
 					DEAfunc=edgeRwrapper){
     library(limma)
     library(edgeR)
-    if(length(nbClone) != 1 | !(nbClone %in% c(1,2)))  stop("nbClone should be either 1 or 2.")
-    if(nbClone==2 & !useOnlyMulticlone) stop("useOnlyMulticlone cannot be FALSE when nbClone=2")
+    if(nbClone>1 & !useOnlyMulticlone) stop("useOnlyMulticlone cannot be FALSE when nbClone=2")
     if(length(nbIndividuals)==1) nbIndividuals <- c(nbIndividuals,nbIndividuals)
     
-    saveToFilePrefix <- paste(nbIndividuals[1],"indiv.vs.",nbIndividuals[2],
-                              "indiv.",nbClone,ifelse(nested,".nested",""),sep="")
-    titlePrefix <- paste(nbIndividuals[1]," individuals vs ",nbIndividuals[2],
-                         " individuals (",ifelse(nbClone==2,"2 clones","1 clone"),"/individual)",sep="")
+    saveToFilePrefix <- paste0(nbIndividuals[1],"indiv.vs.",nbIndividuals[2],
+                              "indiv.",nbClone,ifelse(nested,".nested",""))
+    titlePrefix <- paste0(nbIndividuals[1]," individuals vs ",nbIndividuals[2],
+                         " individuals (",nbClone," clone",ifelse(nbClone>1,"s",""),"/individual)")
 
     DEsamples <- seq_len(nbClone*nbIndividuals[1])
     
@@ -58,6 +57,14 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     m <- res$annotation
     agc <- res$dat
     rm(res)
+    stopifnot(!is.integer(nbClone) || nbClone<1)
+    if(nbClone>2){
+      ni <- sum(table(a$individual)>=nbClone)
+      if(sum(nbIndividuals)>ni)
+        stop("Not enough individuals with the required number of clones")
+      if(!quiet) message(ni, " individuals with the needed number of clones")
+    }
+
     if(!is.null(filter)){
     	if(!("function" %in% class(filter)))
     	   warning("The filter argument is not a function - will be ignored.")
@@ -95,15 +102,16 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     names(id) <- m$individual[!duplicated(m$individual)]
     t <- table(m$individual)
     if(!quiet) message("Looking for combinations...")
-    if( nbClone > 1 | useOnlyMulticlone) t <- t[which(t>1)]
-    if( (useOnlyMulticlone || nbClone > 1) ){
-        c2 <- as.data.frame(t(combn(names(t),sum(nbIndividuals))),stringsAsFactors=F)
-        if(nrow(c2) > maxTests*20) c2 <- c2[sample(nrow(c2),20*maxTests),]
-        c2$sex.balanced <- apply(c2,1, FUN=function(x){
-          .getSexRatio(x[1:nbIndividuals[1]],id)==.getSexRatio(x[nbIndividuals[1]+1:nbIndividuals[2]],id)
-        })
-        c2 <- c2[which(c2$sex.balanced),]
-    }else if(sum(nbIndividuals) <= min(sexes <- table(id))){
+    if( nbClone > 1 || useOnlyMulticlone ) t <- t[which(t>=max(2,nbClone))]
+    # if( (nbClone > 1 || useOnlyMulticlone)  ){
+    #   c2 <- as.data.frame(t(combn(names(t),sum(nbIndividuals))),stringsAsFactors=F)
+    #   if(nrow(c2) > maxTests*20) c2 <- c2[sample(nrow(c2),20*maxTests),]
+    #   c2$sex.balanced <- apply(c2,1, FUN=function(x){
+    #     .getSexRatio(x[1:nbIndividuals[1]],id)==.getSexRatio(x[nbIndividuals[1]+1:nbIndividuals[2]],id)
+    #   })
+    #   c2 <- c2[which(c2$sex.balanced),]
+    # }else 
+    if(sum(nbIndividuals) <= min(sexes <- table(id))){
   	  c2 <- do.call(rbind,lapply(names(sexes),m=m,maxTests=maxTests,nbIndividuals=nbIndividuals,st=sexes,FUN=function(x,m,maxTests,nbIndividuals,st){
     		nn <- ceiling(1.2*maxTests*st[x]/sum(st))
     		c3 <- as.data.frame(t(combn(unique(m$individual[which(m$sex==x)]),sum(nbIndividuals))),stringsAsFactors=F)
@@ -136,18 +144,18 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
         return(NULL)
     }
     row.names(c2) <- 1:nrow(c2)
-    if(nbClone==2){
-        clones1 <- apply(c2[,1:nbIndividuals[1]],1,FUN=function(x){
+    if(nbClone>1){
+      clones <- lapply(seq_len(nbClone), FUN=function(i){
+        apply(c2[,1:nbIndividuals[1]],1,FUN=function(x){
           paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),2)] }), collapse=",")
         })
-        clones2 <- apply(c2[,nbIndividuals[1]+1:nbIndividuals[1]],1,FUN=function(x){
-          paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),2)] }), collapse=",")
-        })
-        c2$clones <- paste(clones1, clones2, sep=",")
+      })
+      clones$sep <- ","
+      c2$clones <- do.call(paste,clones)
     }else{
-        c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
-            paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),1)] }), collapse=",")
-        })    
+      c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
+          paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),1)] }), collapse=",")
+      })    
     }
 
     if(!quiet)  message(paste("Running",nrow(c2),"differential expression analyses"))
@@ -199,7 +207,11 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
         }
     }
 
-    res <- data.frame(row.names=rownames(d.FDR),meanPval=rowMeans(d.PValue), pval.below.05=apply(d.PValue,1,FUN=function(x){ sum(x < 0.05, na.rm=T)}), pval.below.01=apply(d.PValue,1,FUN=function(x){ sum(x < 0.01, na.rm=T)}), FDR.below.05=apply(d.FDR,1,FUN=function(x){ sum(x < 0.05, na.rm=T)}), FDR.below.01=apply(d.FDR,1,FUN=function(x){ sum(x < 0.01, na.rm=T)}))
+    res <- data.frame(row.names=rownames(d.FDR),meanPval=rowMeans(d.PValue), 
+                      pval.below.05=apply(d.PValue,1,FUN=function(x){ sum(x < 0.05, na.rm=T)}), 
+                      pval.below.01=apply(d.PValue,1,FUN=function(x){ sum(x < 0.01, na.rm=T)}), 
+                      FDR.below.05=apply(d.FDR,1,FUN=function(x){ sum(x < 0.05, na.rm=T)}), 
+                      FDR.below.01=apply(d.FDR,1,FUN=function(x){ sum(x < 0.01, na.rm=T)}))
     if(addDE){
         res$inputDE.foldchange <- 1
         res$inputDE.foldchange[DEgenes] <- DEfcs
