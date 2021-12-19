@@ -74,14 +74,9 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     set.seed(seed)
     
     if(!quiet)  message(titlePrefix)
-
-    if(nested){
-      	if(nbClone < 2) stop("nested analysis can only be enabled if nbClone>1")
-      	nested <- m$individual
-      	names(nested) <- row.names(m)
-      }else{
-    	  nested <- NULL
-    }
+  
+    if(nested && nbClone < 2) stop("nested analysis can only be enabled if nbClone>1")
+    if(nested) nested <- rep(head(c(LETTERS,letters),sum(nbIndividuals)), each=nbClone)
     
     # select input differentially-expressed genes
     agc <- agc[order(rowMeans(agc)),]
@@ -102,7 +97,10 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     names(id) <- m$individual[!duplicated(m$individual)]
     t <- table(m$individual)
     if(!quiet) message("Looking for combinations...")
-    if( nbClone > 1 || useOnlyMulticlone ) t <- t[which(t>=max(2,nbClone))]
+    if( nbClone > 1 || useOnlyMulticlone ){
+      t <- t[which(t>=max(2,nbClone))]
+      m <- m[which(m$individual %in% names(t)),]
+    }
     # if( (nbClone > 1 || useOnlyMulticlone)  ){
     #   c2 <- as.data.frame(t(combn(names(t),sum(nbIndividuals))),stringsAsFactors=F)
     #   if(nrow(c2) > maxTests*20) c2 <- c2[sample(nrow(c2),20*maxTests),]
@@ -111,7 +109,7 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
     #   })
     #   c2 <- c2[which(c2$sex.balanced),]
     # }else 
-    if(sum(nbIndividuals) <= min(sexes <- table(id))){
+    if(sum(nbIndividuals) <= min(sexes <- table(id)) && sum(nbIndividuals)<=5){
   	  c2 <- do.call(rbind,lapply(names(sexes),m=m,maxTests=maxTests,nbIndividuals=nbIndividuals,st=sexes,FUN=function(x,m,maxTests,nbIndividuals,st){
     		nn <- ceiling(1.2*maxTests*st[x]/sum(st))
     		c3 <- as.data.frame(t(combn(unique(m$individual[which(m$sex==x)]),sum(nbIndividuals))),stringsAsFactors=F)
@@ -144,19 +142,9 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
         return(NULL)
     }
     row.names(c2) <- 1:nrow(c2)
-    if(nbClone>1){
-      clones <- lapply(seq_len(nbClone), FUN=function(i){
-        apply(c2[,1:nbIndividuals[1]],1,FUN=function(x){
-          paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),2)] }), collapse=",")
-        })
-      })
-      clones$sep <- ","
-      c2$clones <- do.call(paste,clones)
-    }else{
-      c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
-          paste(sapply(as.character(x),FUN=function(y){ row.names(m)[sample(which(m$individual == y),1)] }), collapse=",")
-      })    
-    }
+    c2$clones <- apply(c2[,1:sum(nbIndividuals)],1,FUN=function(x){
+        paste(sapply(as.character(x),FUN=function(y){ paste(row.names(m)[sample(which(m$individual == y),nbClone)], collapse=",") }), collapse=",")
+    })    
 
     if(!quiet)  message(paste("Running",nrow(c2),"differential expression analyses"))
     
@@ -177,7 +165,8 @@ DEA.permutateIndividuals <- function(	nbIndividuals=2,
         }
         clusterEvalQ(cl, library(edgeR))
         clusterExport(cl, c("agc"), envir=environment())
-        d <- parLapply(cl, as.character(c2$clones), DEgenes=DEgenes, nested=nested, DEfcs=DEfcs, DEAfunc=DEAfunc, DEsamples=DEsamples, progBar=progBar, progFile=f, fun=.doDEA)
+        d <- parLapply(cl, as.character(c2$clones), DEgenes=DEgenes, nested=nested, DEfcs=DEfcs, 
+                       DEAfunc=DEAfunc, DEsamples=DEsamples, progBar=progBar, progFile=f, fun=.doDEA)
         stopCluster(cl)
         if( (lw <- length(w <- which(sapply(d, FUN=is.null))))>0){
           warning(w," permutation(s) failed.")
@@ -347,7 +336,8 @@ DEA.permutateClones <- function(nbIndividuals=2, maxTests=50, res=NULL, seed=1, 
         }
         clusterEvalQ(cl, library(edgeR))
         clusterExport(cl, c("agc"), envir=environment())
-        d <- parLapply(cl, as.character(c2$clones), mm=mm, DEgenes=DEgenes, DEfcs=DEfcs, DEAfunc=DEAfunc, DEsamples=1:nbIndividuals[1], paired=paired, nested=NULL, progBar=progBar, progFile=f, fun=.doDEA)
+        d <- parLapply(cl, as.character(c2$clones), mm=mm, DEgenes=DEgenes, DEfcs=DEfcs, DEAfunc=DEAfunc, 
+                       DEsamples=1:nbIndividuals[1], paired=paired, nested=NULL, progBar=progBar, progFile=f, fun=.doDEA)
         if( (lw <- length(w <- which(sapply(d, FUN=is.null))))>0){
           warning(lw," permutation(s) failed.")
           d <- d[-w]
@@ -516,14 +506,19 @@ cellpheno.permutateIndividuals <- function(nbIndividuals=2, nbClone=2, maxTests=
 	return(x)
 }
 
-.doDEA <- function(X, mm=NULL, DEgenes=NULL, DEfcs=NULL, DEsamples=NULL, paired=FALSE, nested=NULL, DEAfunc=edgeRwrapper, progBar=NULL, progFile=NULL){
+.doDEA <- function(X, mm=NULL, DEgenes=NULL, DEfcs=NULL, DEsamples=NULL, paired=FALSE, 
+                   nested=NULL, DEAfunc=edgeRwrapper, progBar=NULL, progFile=NULL){
     if(is.null(X)) return(NULL)
     if(class(X)=="character" & length(X)==1){
         e <- agc[,strsplit(as.character(X),",",fixed=T)[[1]]]
     }else{
         e <- X
     }
-    if(!is.null(nested)) nested <- nested[colnames(e)]
+    if(isFALSE(nested)) nested <- NULL
+    if(!is.null(nested)){
+      if(is.null(names(nested))) names(nested) <- colnames(e)
+      nested <- nested[colnames(e)]
+    } 
     if(!is.null(DEgenes) & !is.null(DEfcs)){
         for(i in DEsamples) e[DEgenes,i] <- e[DEgenes,i]*DEfcs
     }
