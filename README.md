@@ -20,13 +20,7 @@ Some recent changes:
 
 To install the package, download it and install it using the following R command:
 ```
-install.packages("path/to/iPSCpoweR.tar.gz", repos=NULL)
-```
-
-Alternatively, if you have `devtools` installed you can install the package directly from the git repository using:
-```
-library(devtools)
-install_git("https://github.com/plger/iPSCpoweR", build_vignettes=TRUE)
+BiocManager::install("plger/iPSCpoweR", dependencies=TRUE, build_vignettes=TRUE)
 ```
 
 Building the vignette might take a couple of minutes. Once the package is installed, you can load it and access this vignette:
